@@ -1,10 +1,3 @@
----
-trigger: always_on
----
-
----
-trigger: always_on
----
 
 # Noisify - Project Specification Document
 ## Complete Frontend Development Guide
@@ -14,7 +7,7 @@ trigger: always_on
 ## 1. Project Overview
 
 ### 1.1 Purpose
-Noisify is a comprehensive multi-tenant SaaS platform for managing Swedish youth recreation centers (fritidsgårdar). It serves teenagers aged 10-20, providing activity registration, course management, membership tracking, room booking, and media management.
+Noisify is a comprehensive multi-tenant SaaS platform for managing Swedish youth recreation centers (fritidsgårdar). It serves teenagers, providing activity registration, course management, membership tracking, room booking, and media management.
 
 ### 1.2 Core Value Proposition
 - Streamlined activity registration and management
@@ -24,7 +17,7 @@ Noisify is a comprehensive multi-tenant SaaS platform for managing Swedish youth
 - Multi-organization support with isolated data
 
 ### 1.3 Target Users
-1. **Youth Participants (13-18 years)** - Primary end users
+1. **Youth Participants** - Primary end users
    - Discover and register for activities
    - Manage their memberships
    - Track their registrations
@@ -80,8 +73,11 @@ Noisify is a comprehensive multi-tenant SaaS platform for managing Swedish youth
 
 **Authorization Levels:**
 - Role 0: Member (view only)
-- Role 1: Assistant staff (limited editing)
-- Role 2+: Full staff (full permissions)
+- Role 1: Temporary Worker (Vikarie) - Limited access
+- Role 2: Staff - Standard staff permissions
+- Role 3: Unit Manager (Enhetschef) - Coordinators and business developers
+- Role 4: Org Admin - Organization administrator
+- Role 5: System Developer - Highest IT personnel (Super Admin)
 
 **Key Security Patterns:**
 - RLS policies enforce organization isolation

@@ -1,7 +1,53 @@
 # Changelog
 
 
+## 2025-11-26
+- **Bug Fix: City Selection Server Action** - Fixed "Invalid Server Actions request" error when clicking cities in the landing page
+  - Root cause: Server actions called directly from event handlers without `startTransition` in Next.js 16 Turbopack
+  - Fixed in `city-modal.tsx` (initial city selection dialog) and `site-header.tsx` (header city dropdown)
+  - Wrapped all server action calls (`setCityCookie`, `saveCity`, `removeCity`) in `startTransition` for proper concurrent handling
+  - REFACTORED: Implemented **Inline Server Action Wrappers** in Server Components (`page.tsx`, `aktiviteter/page.tsx`).
+    - Instead of passing imported actions directly, we now wrap them in local async functions marked with `'use server'`.
+    - This forces a fresh binding and prevents "Invalid Server Actions request" errors caused by module boundary issues in Next.js 16 Turbopack.
+  - Removed redundant `saveCity` call in city-modal (setCityCookie already calls it internally)
+  - Added loading indicators with `isPending` state for better UX
+- **UI Fix: Quiz Dropdown** - Fixed transparent "Starta" dropdown by removing `overflow-hidden` from card and improving dropdown styling with shadow and better labels
+- **Bug Fix: Answer Options** - Fixed shallow copy issue where adding a new question kept the previous question's answer options. Now uses deep copy with `createNewQuestion()` helper
+- **Feature: Question Reordering** - Implemented drag-and-drop and up/down button controls for reordering questions in the quiz form
+- **UI Improvement: Quiz Form** - Enhanced answer option cards with better visual feedback, checkmark button placement, and "Rätt svar" label for correct answers
+- **UI Improvement: Question List** - Added numbered badges, better hover states, and reorder controls
+
 ## 2025-11-25
+- **Feature: Live Quiz** - Complete Kahoot-style interactive quiz system
+  - **Database Schema:** Created 5 new tables with RLS policies:
+    - `quizzes` - Quiz containers with public/private sharing, categories, cloning support
+    - `quiz_questions` - Questions with 2-4 answer options, time limits (5-120s)
+    - `quiz_sessions` - Live game sessions with PIN codes, access policies (ORG_ONLY/OPEN)
+    - `quiz_participants` - Players with scores, streaks, nicknames
+    - `quiz_answers` - Individual answer tracking with timing for points calculation
+  - **Staff Dashboard (`/staff/quiz`):**
+    - "My Quizzes" tab for organization's own quizzes
+    - "Community Library" tab for browsing/cloning public quizzes from other orgs
+    - Quiz creation form with visual question builder
+    - Start session with access policy selection (Org Only vs Open)
+  - **Host Mode (`/staff/quiz/host/[sessionId]`):**
+    - Lobby with QR code, PIN display, participant list
+    - Real-time game controls (Start, Next Question, Show Answer, Leaderboard)
+    - Animated countdown, timer bar, answer distribution charts
+    - Podium display for top 3 winners
+  - **Player Mode (`/app/quiz`):**
+    - PIN-code entry with numpad interface
+    - Immersive full-screen game experience
+    - Color-coded answer buttons (Red/Blue/Yellow/Green)
+    - Real-time feedback (correct/incorrect animations)
+    - Score and streak tracking with fire icon
+  - **Guest Join (`/join`):**
+    - Public page for guests to join OPEN sessions
+    - No login required for open quizzes
+  - **Real-time:** Supabase Realtime subscriptions for live game state sync
+  - **Points System:** Base 1000 + time bonus (up to 500) + streak bonus (10% per streak, max 50%)
+  - **RLS Fix:** Fixed infinite recursion in quiz_sessions/quiz_participants policies, added anon access for guests
+  - **Code Quality:** Updated Tailwind gradient classes to modern syntax, fixed React useCallback hooks, improved ESLint compliance
 - **Backend Update:** Implemented Pricing Tiers logic.
   - Added `tier`, `max_members`, `max_staff`, and `max_storage_mb` to `organizations` table.
   - Implemented database triggers to enforce member and staff limits based on the organization's tier.

@@ -1,8 +1,8 @@
 # Noisify Database Schema Documentation
 
-**Generated:** November 24, 2025 (Updated)  
+**Generated:** November 25, 2025 (Updated)  
 **Database:** PostgreSQL 14+ (Supabase)  
-**Total Tables:** 88  
+**Total Tables:** 93  
 **Total Views:** 37  
 **Total RPC Functions:** 85  
 **Total Edge Functions:** 4  
@@ -58,6 +58,7 @@ The Noisify database is designed for a multi-tenant SaaS platform managing Swedi
 - ✅ **Chat System** - Real-time group messaging for organization members and staff (November 2025)
 - ✅ **Organization Onboarding** - Self-service organization registration with wizard flow (November 2025)
 - ✅ **SEO Slugs** - Added `slug` columns to organizations and activities for friendly URLs (November 2025)
+- ✅ **Live Quiz System** - Kahoot-style interactive quiz feature (November 2025)
 
 **Security Improvements:**
 - ✅ Fixed all SECURITY DEFINER functions with proper `search_path`
@@ -97,6 +98,24 @@ The Noisify database is designed for a multi-tenant SaaS platform managing Swedi
 - `chat_groups` - Chat groups/conversations
 - `chat_participants` - Group membership with roles
 - `chat_messages` - Real-time messages
+- `quizzes` - Live quiz containers
+- `quiz_questions` - Quiz questions with options
+- `quiz_sessions` - Live game sessions
+- `quiz_participants` - Players in sessions
+- `quiz_answers` - Individual answer tracking
+
+### `org_user`
+Organization membership and roles
+
+```typescript
+interface OrgUser {
+  org_user_id: string;         // UUID, primary key
+  org_id: string;              // References organisation
+  profile_id: string;          // References profile
+  role_id: number;             // 1=Vikarie, 2=Staff, 3=Unit Manager, 4=Org Admin, 5=System Developer
+  joined_at: string;           // Timestamp
+}
+```
 
 ---
 
@@ -134,6 +153,7 @@ interface ChatParticipant {
   role: 'admin' | 'member';    // Participant role
   joined_at: string;           // Timestamp
   is_blocked: boolean;         // Default: false
+  last_read_at: string;        // Timestamp, default now()
 }
 ```
 
@@ -206,6 +226,128 @@ supabase
 
 ---
 
+## Live Quiz System
+
+### Overview
+The Live Quiz system provides Kahoot-style interactive quizzes for youth recreation centers. Staff can create quizzes and host live sessions, while youth participate via their mobile devices.
+
+### `quizzes`
+Static quiz containers that hold questions.
+
+```typescript
+interface Quiz {
+  id: string;                    // UUID, primary key
+  org_id: string;                // References organizations
+  created_by: string;            // References profiles
+  title: string;                 // Quiz title
+  description: string | null;    // Optional description
+  cover_image_url: string | null;// Cover image
+  category: string;              // e.g., 'Musik', 'Sport', 'Allmänt'
+  is_public: boolean;            // If true, appears in Community Library
+  cloned_from: string | null;    // Tracks original if cloned
+  created_at: string;
+  updated_at: string;
+}
+```
+
+### `quiz_questions`
+Questions belonging to a quiz.
+
+```typescript
+interface QuizQuestion {
+  id: string;                    // UUID, primary key
+  quiz_id: string;               // References quizzes
+  question_text: string;         // The question
+  time_limit_seconds: number;    // 5-120 seconds
+  order_index: number;           // Question order
+  options: {                     // JSONB array
+    text: string;
+    isCorrect: boolean;
+  }[];
+  created_at: string;
+}
+```
+
+### `quiz_sessions`
+Live game sessions with real-time state.
+
+```typescript
+interface QuizSession {
+  id: string;                    // UUID, primary key
+  quiz_id: string;               // References quizzes
+  org_id: string;                // References organizations
+  host_id: string;               // References profiles
+  pin_code: string;              // 6-digit unique PIN
+  status: 'LOBBY' | 'IN_PROGRESS' | 'SHOWING_RESULTS' | 'LEADERBOARD' | 'FINISHED';
+  access_policy: 'ORG_ONLY' | 'OPEN'; // Who can join
+  current_question_index: number;// -1 = not started
+  current_state: 'WAITING_FOR_HOST' | 'COUNTDOWN' | 'QUESTION_ACTIVE' | 'SHOW_ANSWER' | 'SHOW_LEADERBOARD';
+  question_started_at: string | null;
+  created_at: string;
+  ended_at: string | null;
+}
+```
+
+### `quiz_participants`
+Players in a session.
+
+```typescript
+interface QuizParticipant {
+  id: string;                    // UUID, primary key
+  session_id: string;            // References quiz_sessions
+  profile_id: string | null;     // Nullable for guests
+  guest_name: string | null;     // Used if profile_id is null
+  nickname: string;              // Display name in game
+  score: number;                 // Total points
+  streak: number;                // Current correct answer streak
+  last_answer_at: string | null;
+  joined_at: string;
+}
+```
+
+### `quiz_answers`
+Individual answer tracking.
+
+```typescript
+interface QuizAnswer {
+  id: string;                    // UUID, primary key
+  session_id: string;            // References quiz_sessions
+  participant_id: string;        // References quiz_participants
+  question_index: number;        // Which question
+  selected_option: number;       // 0-3 answer index
+  is_correct: boolean;
+  time_taken_ms: number;         // For time bonus calculation
+  points_earned: number;
+  created_at: string;
+}
+```
+
+### Points Calculation
+- **Base Points:** 1000 for correct answer
+- **Time Bonus:** Up to 500 extra for quick answers
+- **Streak Bonus:** 10% per streak level (max 50%)
+
+### Real-time Subscriptions
+```typescript
+// Subscribe to session changes
+supabase
+  .channel(`quiz_session_${sessionId}`)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'quiz_sessions',
+    filter: `id=eq.${sessionId}`
+  }, handleSessionUpdate)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 'quiz_participants',
+    filter: `session_id=eq.${sessionId}`
+  }, handleParticipantUpdate)
+  .subscribe();
+```
+
+---
 
 ## Organization Onboarding
 
@@ -469,6 +611,18 @@ Marks all notifications as read.
 
 #### `get_unread_notification_count()`
 Gets unread notification count.
+  RETURN v_count;
+END;
+$$;
+
+### Chat Functions (2 functions)
+
+#### `mark_chat_as_read(p_group_id)`
+Updates `last_read_at` for the current user in the specified group.
+- **Returns:** VOID
+
+#### `get_unread_chat_count()`
+Returns the number of groups with unread messages for the current user.
 - **Returns:** Integer
 
 ### Helper Functions (41 functions)

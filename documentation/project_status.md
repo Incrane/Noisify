@@ -1,7 +1,7 @@
 # Project Status: Noisify
 
-**Date:** 2025-11-25
-**Overall Completion:** ~88%
+**Date:** 2025-11-26
+**Overall Completion:** ~92%
 
 ## 📊 Completion Summary
 
@@ -9,7 +9,7 @@
 | :--- | :--- | :--- |
 | **Public Pages** | 🟢 Mostly Complete | 95% |
 | **Authenticated App** | 🟢 Mostly Complete | 90% |
-| **Staff Dashboard** | � Mostly Complete | 90% |
+| **Staff Dashboard** | 🟢 Mostly Complete | 95% |
 | **API & Core** | 🟢 Stable | 95% |
 
 ---
@@ -17,7 +17,7 @@
 ## 🌍 Public Pages (Root)
 *Accessible to all visitors.*
 
-- [x] **Landing Page** (`/`) - *Main entry point (City Selection Multi-save + Auto-select single + Hydration Fix + Org Fetch Fix + Content Filtering + Hidden Fav Button for Logged Out 2025-11-24)*
+- [x] **Landing Page** (`/`) - *Main entry point (City Selection Server Action Fix 2025-11-26 + Multi-save + Auto-select single + Hydration Fix + Org Fetch Fix + Content Filtering + Hidden Fav Button for Logged Out 2025-11-24)*
 - [x] **Browse Activities** (`/aktiviteter`) - *Public listing (Header Standardized + Fav Auth Handle + City Filtering + Hidden Fav Button for Logged Out 2025-11-24)*
 - [x] **Activity Detail** (`/aktiviteter/[slug]`) - *Public view (Header Standardized + Slug Routing 2025-11-24)*
 - [x] **Organizations List** (`/organisationer`) - *Browse centers (Header Standardized + Fetch Fix + City Filtering + Slug URLs 2025-11-24)*
@@ -31,6 +31,7 @@
 - [x] **Frontend Update** - *Updated all public routes to use slugs instead of IDs (2025-11-24)*
 - [x] **404 Page** - *Custom designed Not Found page (2025-11-24)*
 - [x] **Legal Pages** (`/integritetspolicy`, `/anvandarvillkor`, `/cookies`) - *Added (2025-11-24)*
+- [x] **Guest Quiz Join** (`/join`) - *Public page for guests to join open quizzes (2025-11-25)*
 
 ## 🔐 Authenticated App (`/app`)
 *Requires login. For members (youth).*
@@ -49,6 +50,10 @@
     - [x] **Change Password** (`/app/profil/andra-losenord`) - *Verified and Secured*
     - [x] **Delete Account** (`/app/profil/radera-konto`) - *Verified and Implemented with Admin Cleanup*
     - [x] **Forgot Password** (`/glomt-losenord`) - *Implemented standard Supabase reset flow*
+- [x] **Live Quiz Player** (`/app/quiz`) - *Mobile-first immersive quiz experience (2025-11-25)*
+  - [x] PIN-code join screen
+  - [x] Real-time answer buttons
+  - [x] Score tracking with streaks
 
 ## 🛡️ Staff Dashboard (`/staff`)
 *For organization staff and admins.*
@@ -69,6 +74,11 @@
   - [x] **Member Actions UI** - *Refined chat/notifications design + working notices (2025-11-23)*
 - [x] **Organization Creation** - *Modal & Action implemented (2025-11-24)*
 - [x] **Statistics Page** (`/staff/statistik`) - *Key metrics & popular activities dashboard (2025-11-24)*
+- [x] **Live Quiz** (`/staff/quiz`) - *Kahoot-style interactive quiz system (2025-11-25)*
+  - [x] Quiz creation with question builder
+  - [x] Community Library with clone feature
+  - [x] Host Mode with real-time game controls
+  - [x] Lobby, Countdown, Question, Answer Reveal, Leaderboard views
 - [ ] **Course Editor** - *Refinement in progress*
 
 ## ⚙️ API & System
@@ -85,6 +95,12 @@
 6.  **Phase 2 Preparation**: Plan for the implementation of public Course pages.
 
 ### Completed Tasks (2025-11-25)
+- ✅ **Live Quiz Feature**: Complete Kahoot-style interactive quiz system
+  - Database: Created `quizzes`, `quiz_questions`, `quiz_sessions`, `quiz_participants`, `quiz_answers` tables
+  - Staff: Quiz management, question builder, Community Library, Host Mode
+  - Youth App: Immersive player experience with PIN join, answer buttons, scores, streaks
+  - Public: Guest join page for open sessions
+  - Real-time: Supabase Realtime for live game state synchronization
 - ✅ **Documentation**: Defined Pricing Tiers logic in `pricing-tiers.md`.
 - ✅ **Database**: Implemented subscription tier columns and updated schema documentation.
 
