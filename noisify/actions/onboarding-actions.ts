@@ -112,3 +112,88 @@ export async function createOrganization(formData: FormData) {
     revalidatePath('/staff')
     return { success: true, orgId: orgId }
 }
+
+export async function uploadOrgLogo(formData: FormData) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Inte inloggad" }
+
+    const file = formData.get("file") as File;
+    if (!file) return { error: "Ingen fil vald" };
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+        return { error: "Endast bilder är tillåtna (JPG, PNG, WEBP)" };
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        return { error: "Filen är för stor. Maxstorlek är 5MB." };
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `org-logo_${user.id}_${Date.now()}.${fileExt}`;
+    const filePath = `logos/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from("public_images")
+        .upload(filePath, file);
+
+    if (uploadError) {
+        return { error: "Kunde inte ladda upp logotyp: " + uploadError.message };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from("public_images")
+        .getPublicUrl(filePath);
+
+    return { success: true, url: publicUrl };
+}
+
+export async function completeOnboarding(orgId: string, data: {
+    description?: string;
+    logo_url?: string;
+    opening_hours?: any;
+    social_links?: any;
+}) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+
+    if (!user) return { error: "Inte inloggad" }
+
+    // Verify user is admin of this org
+    const { data: membership } = await supabase
+        .from('org_user')
+        .select('role_id')
+        .eq('profile_id', (await supabase.from('profiles').select('id').eq('user_id', user.id).single()).data?.id)
+        .eq('org_id', orgId)
+        .single()
+
+    if (!membership || membership.role_id < 4) {
+        return { error: "Du har inte behörighet att redigera denna organisation" }
+    }
+
+    const { error } = await supabase
+        .from('organizations')
+        .update({
+            description: data.description,
+            logo_url: data.logo_url,
+            opening_hours: data.opening_hours,
+            social_links: data.social_links,
+            // We could set status to 'active' here if we wanted auto-approval, 
+            // but for now we keep it pending or whatever it was.
+            // Actually, let's assume this completes the setup so maybe we mark it as 'active' if it was 'pending'?
+            // Or just leave it as is. The requirement says "New organizations require admin approval".
+            // So we leave it as is.
+        })
+        .eq('id', orgId)
+
+    if (error) {
+        console.error('Complete onboarding error:', error)
+        return { error: "Kunde inte spara uppgifter: " + error.message }
+    }
+
+    revalidatePath('/staff')
+    return { success: true }
+}

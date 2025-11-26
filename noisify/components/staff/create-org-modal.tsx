@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { X, Building2 } from 'lucide-react';
 import { createOrganization } from '@/actions/onboarding-actions';
+import { selectOrganization } from '@/app/staff/actions';
 import { useRouter } from 'next/navigation';
 
 interface CreateOrgModalProps {
@@ -42,21 +43,25 @@ export default function CreateOrgModal({ isOpen, onClose }: CreateOrgModalProps)
       formData.append('contactPhone', contactPhone);
 
       const result = await createOrganization(formData);
-      
-      if (result.success) {
-        setSuccess('Organisation skapad!');
+
+      if (result.success && result.orgId) {
+        setSuccess('Organisation skapad! Vidarebefordrar till onboarding...');
+
+        // Select the new org
+        await selectOrganization(result.orgId);
+
         // Reset form
         setOrgName('');
         setOrgAddress('');
         setContactEmail('');
         setContactPhone('');
-        
-        // Refresh and close
+
+        // Redirect to onboarding
         setTimeout(() => {
-          router.refresh();
           onClose();
+          router.push('/staff/onboarding');
           setSuccess(null);
-        }, 1500);
+        }, 1000);
       } else {
         setError(result.error || 'Ett fel uppstod.');
       }
@@ -78,7 +83,7 @@ export default function CreateOrgModal({ isOpen, onClose }: CreateOrgModalProps)
             </div>
             Ny verksamhet
           </h2>
-          <button 
+          <button
             onClick={onClose}
             className="text-slate-400 hover:text-slate-600 hover:bg-slate-50 p-2 rounded-lg transition-colors"
           >

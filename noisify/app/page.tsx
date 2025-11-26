@@ -204,15 +204,22 @@ export default async function Home() {
             </div>
 
             {/* Filter Tags */}
-            <div className="flex flex-wrap gap-2 mb-12">
-              <span className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium flex items-center gap-1">
-                <Users className="w-3 h-3" /> Utomhus
-              </span>
+            <div className="flex flex-wrap gap-2 mb-12 overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 md:pb-0 md:overflow-visible no-scrollbar">
+              <Link
+                href="/aktiviteter"
+                className="px-4 py-1.5 bg-indigo-100 text-indigo-700 rounded-full text-sm font-medium flex items-center gap-1 whitespace-nowrap hover:bg-indigo-200 transition-colors"
+              >
+                <Users className="w-3 h-3" /> Alla aktiviteter
+              </Link>
               {categories && categories.length > 0 ? (
                 categories.slice(0, 10).map((cat) => (
-                  <span key={cat.id} className="px-4 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors cursor-default">
+                  <Link
+                    key={cat.id}
+                    href={`/aktiviteter?category=${encodeURIComponent(cat.category_name)}`}
+                    className="px-4 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-full text-sm font-medium hover:border-indigo-300 hover:text-indigo-600 transition-colors whitespace-nowrap"
+                  >
                     {cat.category_name}
-                  </span>
+                  </Link>
                 ))
               ) : (
                 <span className="text-sm text-slate-400">Laddar kategorier...</span>

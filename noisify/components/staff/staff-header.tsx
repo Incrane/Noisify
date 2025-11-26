@@ -9,6 +9,7 @@ import { Sheet, SheetContent, SheetTrigger, SheetTitle } from "@/components/ui/s
 import StaffSidebar from "./staff-sidebar"
 import { createClient } from "@/utils/supabase/client"
 import { useEffect } from "react"
+import NotificationsDropdown from "@/components/notifications-dropdown"
 
 interface Org {
   org_id: string;
@@ -119,6 +120,7 @@ export default function StaffHeader({
           </span>
         )}
         <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
+        <NotificationsDropdown />
         <AppSwitcher />
       </div>
     </header>

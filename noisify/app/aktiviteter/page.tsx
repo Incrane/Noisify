@@ -33,14 +33,15 @@ export const revalidate = 0; // Dynamic for search
 export default async function PublicActivitiesPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; date?: string }>;
+  searchParams: Promise<{ q?: string; date?: string; category?: string }>;
 }) {
   const supabase = await createClient();
   const params = await searchParams;
   const query = params.q;
   const date = params.date;
+  const category = params.category;
   const { cities, cityName, savedCities, cityId } = await getLayoutData();
-  
+
   // Check if user is logged in
   const { data: { user } } = await supabase.auth.getUser();
 
@@ -49,16 +50,17 @@ export default async function PublicActivitiesPage({
     .from("activity_dashboard")
     .select("*")
     .eq("activity_status", "PUBLISHED")
+    .gte("start_datum_tid", new Date().toISOString()) // Only upcoming activities
     .order("start_datum_tid", { ascending: true });
 
   if (cityId) {
     const { data: orgs } = await supabase.from("organizations").select("id").eq("city_id", cityId);
     const orgIds = orgs?.map(o => o.id) || [];
-    
+
     if (orgIds.length > 0) {
-        dbQuery = dbQuery.in("agande_org_id", orgIds);
+      dbQuery = dbQuery.in("agande_org_id", orgIds);
     } else {
-        dbQuery = dbQuery.eq("agande_org_id", "00000000-0000-0000-0000-000000000000");
+      dbQuery = dbQuery.eq("agande_org_id", "00000000-0000-0000-0000-000000000000");
     }
   }
 
@@ -74,6 +76,10 @@ export default async function PublicActivitiesPage({
       .lte("start_datum_tid", `${date}T23:59:59`);
   }
 
+  if (category) {
+    dbQuery = dbQuery.contains('categories_json', JSON.stringify([{ cat_name: category }]));
+  }
+
   const { data: activities, error } = await dbQuery;
 
   if (error) {
@@ -82,16 +88,16 @@ export default async function PublicActivitiesPage({
 
   return (
     <div className="min-h-screen bg-slate-50">
-      <SiteHeader 
-        cities={cities} 
-        selectedCityName={cityName} 
-        savedCities={savedCities} 
+      <SiteHeader
+        cities={cities}
+        selectedCityName={cityName}
+        savedCities={savedCities}
         user={user}
         onSelectCity={selectCityAction}
         onSaveCity={saveCityAction}
-        onRemoveCity={removeCityAction} 
+        onRemoveCity={removeCityAction}
       />
-      
+
       <main className="container mx-auto px-4 py-12">
         <div className="text-center max-w-3xl mx-auto mb-12">
           <h1 className="text-3xl md:text-4xl font-bold text-slate-900 mb-4">
@@ -116,9 +122,9 @@ export default async function PublicActivitiesPage({
           ))}
 
           {activities?.length === 0 && (
-             <div className="col-span-full text-center py-12 text-slate-500">
-               Just nu finns inga publicerade aktiviteter.
-             </div>
+            <div className="col-span-full text-center py-12 text-slate-500">
+              Just nu finns inga publicerade aktiviteter.
+            </div>
           )}
         </div>
       </main>

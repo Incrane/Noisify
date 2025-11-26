@@ -62,7 +62,7 @@ export default async function StaffDashboardPage() {
           await supabase
             .from("activity")
             .select("activity_id")
-            .in("org_id", orgIds)
+            .in("owner_org_id", orgIds)
         ).data?.map((a) => a.activity_id) || []
       ),
 
@@ -70,7 +70,7 @@ export default async function StaffDashboardPage() {
     supabase
       .from("activity")
       .select("*", { count: "exact", head: true })
-      .in("org_id", orgIds)
+      .in("owner_org_id", orgIds)
       .gte("starts_at", now.toISOString())
       .neq("status", "ARCHIVED"),
 
@@ -85,12 +85,12 @@ export default async function StaffDashboardPage() {
     supabase
       .from("activity")
       .select("activity_id, name, starts_at, ends_at, location, room_id")
-      .in("org_id", orgIds)
+      .in("owner_org_id", orgIds)
       .gte("starts_at", todayStart.toISOString())
       .lte("starts_at", todayEnd.toISOString())
       .neq("status", "ARCHIVED")
       .order("starts_at", { ascending: true }),
-      
+
     // 5. Today's Room Bookings
     supabase
       .from("room_bookings")
@@ -116,7 +116,7 @@ export default async function StaffDashboardPage() {
     supabase
       .from("activity")
       .select("activity_id, name, starts_at, status, capacity")
-      .in("org_id", orgIds)
+      .in("owner_org_id", orgIds)
       .order("created_at", { ascending: false })
       .limit(5)
   ]);
@@ -220,9 +220,9 @@ export default async function StaffDashboardPage() {
                   <div key={`${event.type}-${event.id}`} className="p-5 hover:bg-slate-50 transition-colors flex items-center justify-between group">
                     <div className="flex items-start gap-4">
                       <div className={`flex flex-col items-center justify-center w-14 h-14 rounded-xl border 
-                        ${event.type === 'activity' 
-                            ? 'bg-indigo-50 text-indigo-700 border-indigo-100' 
-                            : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
+                        ${event.type === 'activity'
+                          ? 'bg-indigo-50 text-indigo-700 border-indigo-100'
+                          : 'bg-purple-50 text-purple-700 border-purple-100'}`}>
                         <span className="text-xs font-bold uppercase">{new Date(event.start).toLocaleTimeString('sv-SE', { hour: '2-digit', minute: '2-digit' })}</span>
                       </div>
                       <div>
@@ -239,20 +239,20 @@ export default async function StaffDashboardPage() {
                             </span>
                           )}
                           {event.organizer && (
-                             <span className="flex items-center gap-1 text-slate-400">
-                                • {event.organizer}
-                             </span>
+                            <span className="flex items-center gap-1 text-slate-400">
+                              • {event.organizer}
+                            </span>
                           )}
                         </div>
                       </div>
                     </div>
                     {event.link && (
-                        <Link
+                      <Link
                         href={event.link}
                         className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                        >
+                      >
                         <ArrowRight className="w-5 h-5" />
-                        </Link>
+                      </Link>
                     )}
                   </div>
                 ))

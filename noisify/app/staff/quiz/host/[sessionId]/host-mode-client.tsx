@@ -7,14 +7,17 @@ import { Play, Users, Trophy, SkipForward, XCircle, Copy, Check, BarChart3, Flam
 import { Button } from '@/components/ui/button';
 import { updateSessionState, endSession, getLeaderboard } from '../../actions';
 import { QuizOption, QuizParticipant, LeaderboardEntry } from '@/types/quiz';
-// QR Code component - simple inline implementation
+import QRCode from "react-qr-code";
+
+// QR Code component
 const QRCodeDisplay = ({ value, size }: { value: string; size: number }) => (
-  <div className="flex items-center justify-center" style={{ width: size, height: size }}>
-    <div className="text-center text-slate-600 text-sm">
-      <div className="text-4xl mb-2">📱</div>
-      <p>Scanna QR-koden</p>
-      <p className="text-xs mt-1 break-all">{value}</p>
-    </div>
+  <div className="bg-white p-2 rounded-lg" style={{ width: size, height: size }}>
+    <QRCode
+      size={256}
+      style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+      value={value}
+      viewBox={`0 0 256 256`}
+    />
   </div>
 );
 
@@ -58,7 +61,7 @@ const ANSWER_COLORS = [
 export default function HostModeClient({ session, quiz, initialParticipants }: HostModeClientProps) {
   const router = useRouter();
   const supabase = createClient();
-  
+
   const [participants, setParticipants] = useState<QuizParticipant[]>(initialParticipants);
   const [currentState, setCurrentState] = useState(session.current_state);
   const [currentQuestionIndex, setCurrentQuestionIndex] = useState(session.current_question_index);
@@ -113,7 +116,7 @@ export default function HostModeClient({ session, quiz, initialParticipants }: H
     });
     setCurrentQuestionIndex(0);
     setCurrentState('COUNTDOWN');
-    
+
     // Show countdown for 3 seconds then start question
     setTimeout(async () => {
       await updateSessionState(session.id, {
@@ -149,7 +152,7 @@ export default function HostModeClient({ session, quiz, initialParticipants }: H
         if (payload.eventType === 'INSERT') {
           setParticipants(prev => [...prev, payload.new as QuizParticipant]);
         } else if (payload.eventType === 'UPDATE') {
-          setParticipants(prev => 
+          setParticipants(prev =>
             prev.map(p => p.id === payload.new.id ? payload.new as QuizParticipant : p)
           );
         } else if (payload.eventType === 'DELETE') {
@@ -178,7 +181,7 @@ export default function HostModeClient({ session, quiz, initialParticipants }: H
 
     let remainingTime = currentQuestion.time_limit_seconds;
     setTimeLeft(remainingTime); // Initial set is intentional for timer sync
-    
+
     const interval = setInterval(() => {
       remainingTime -= 1;
       if (remainingTime <= 0) {
@@ -206,7 +209,7 @@ export default function HostModeClient({ session, quiz, initialParticipants }: H
 
   const nextQuestion = async () => {
     const nextIndex = currentQuestionIndex + 1;
-    
+
     if (nextIndex >= totalQuestions) {
       // Game finished
       await endSession(session.id);
@@ -217,14 +220,14 @@ export default function HostModeClient({ session, quiz, initialParticipants }: H
 
     setIsLoading(true);
     setAnswerCounts([0, 0, 0, 0]);
-    
+
     await updateSessionState(session.id, {
       current_question_index: nextIndex,
       current_state: 'COUNTDOWN'
     });
     setCurrentQuestionIndex(nextIndex);
     setCurrentState('COUNTDOWN');
-    
+
     setTimeout(async () => {
       await updateSessionState(session.id, {
         current_state: 'QUESTION_ACTIVE',
@@ -356,7 +359,7 @@ function LobbyView({
         <div className="bg-white p-4 rounded-xl">
           <QRCodeDisplay value={joinUrl} size={180} />
         </div>
-        
+
         <div className="text-left">
           <p className="text-slate-400 mb-1">PIN-kod</p>
           <div className="flex items-center gap-3">
@@ -382,7 +385,7 @@ function LobbyView({
             Deltagare ({participants.length})
           </h3>
         </div>
-        
+
         {participants.length > 0 ? (
           <div className="flex flex-wrap gap-2 justify-center">
             {participants.map((p, i) => (
@@ -456,9 +459,8 @@ function QuestionView({
       {/* Timer Bar */}
       <div className="relative h-4 bg-slate-700 rounded-full overflow-hidden">
         <div
-          className={`h-full transition-all duration-1000 ${
-            progress > 50 ? 'bg-green-500' : progress > 25 ? 'bg-yellow-500' : 'bg-red-500'
-          }`}
+          className={`h-full transition-all duration-1000 ${progress > 50 ? 'bg-green-500' : progress > 25 ? 'bg-yellow-500' : 'bg-red-500'
+            }`}
           style={{ width: `${progress}%` }}
         />
         <div className="absolute inset-0 flex items-center justify-center text-xs font-bold">
@@ -618,7 +620,7 @@ function LeaderboardView({
               </div>
             </div>
           )}
-          
+
           {/* 1st Place */}
           {top3[0] && (
             <div className="text-center">
@@ -635,7 +637,7 @@ function LeaderboardView({
               </div>
             </div>
           )}
-          
+
           {/* 3rd Place */}
           {top3[2] && (
             <div className="text-center">

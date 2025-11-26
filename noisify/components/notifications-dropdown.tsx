@@ -23,7 +23,7 @@ export default function NotificationsDropdown() {
 
     const fetchNotifications = async () => {
         try {
-            const res = await fetch('/app/api/notifications')
+            const res = await fetch('/api/notifications')
             if (res.ok) {
                 const data = await res.json()
                 setNotifications(data)

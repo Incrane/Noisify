@@ -25,11 +25,11 @@ interface SiteHeaderProps {
   onRemoveCity?: (cityId: string) => Promise<void>
 }
 
-export default function SiteHeader({ 
-  cities = [], 
-  selectedCityName, 
-  selectedCityId, 
-  savedCities = [], 
+export default function SiteHeader({
+  cities = [],
+  selectedCityName,
+  selectedCityId,
+  savedCities = [],
   user,
   onSelectCity,
   onSaveCity,
@@ -233,7 +233,7 @@ export default function SiteHeader({
               <SheetTrigger asChild>
                 {MobileMenuTrigger}
               </SheetTrigger>
-              <SheetContent side="right">
+              <SheetContent side="right" className="bg-white">
                 <SheetTitle className="sr-only">Mobile Menu</SheetTitle>
                 <div className="flex flex-col gap-6 mt-8">
                   <Link href="/" className="flex items-center gap-2 mb-4" onClick={() => setIsOpen(false)}>
