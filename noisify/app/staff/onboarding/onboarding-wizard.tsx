@@ -335,8 +335,8 @@ export default function OnboardingWizard({ initialData }: OnboardingWizardProps)
                                 </div>
                                 <div>
                                     <h4 className="font-medium text-sm text-slate-900 mb-1">Socialt</h4>
-                                    {Object.entries(formData.social_links).map(([key, value]) => (
-                                        value && <p key={key} className="text-sm text-slate-600 capitalize">{key}: {value as string}</p>
+                                    {Object.entries(formData.social_links as Record<string, string>).map(([key, value]) => (
+                                        value ? <p key={key} className="text-sm text-slate-600 capitalize">{key}: {value}</p> : null
                                     ))}
                                 </div>
                             </div>
@@ -422,6 +422,7 @@ export default function OnboardingWizard({ initialData }: OnboardingWizardProps)
                     setFormData(prev => ({ ...prev, logo_url: url }))
                     setShowUnsplash(false)
                 }}
+                orgId={initialData.id}
             />
         </div>
     )
