@@ -1,0 +1,145 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e1]:
+  - generic [ref=e2]:
+    - complementary [ref=e3]:
+      - generic [ref=e4]:
+        - generic [ref=e5]:
+          - generic [ref=e7]: "N"
+          - heading "Noisify" [level=1] [ref=e8]
+        - link "Tillbaka till appen" [ref=e9] [cursor=pointer]:
+          - /url: /app/aktiviteter
+      - navigation [ref=e10]:
+        - generic [ref=e11]:
+          - paragraph [ref=e12]: Översikt
+          - link "Dashboard" [ref=e13] [cursor=pointer]:
+            - /url: /staff
+            - img [ref=e14]
+            - generic [ref=e19]: Dashboard
+        - generic [ref=e20]:
+          - paragraph [ref=e21]: Administration
+          - generic [ref=e22]:
+            - generic [ref=e23]:
+              - button "Verksamhet" [ref=e24]:
+                - generic [ref=e25]:
+                  - img [ref=e26]
+                  - generic [ref=e30]: Verksamhet
+                - img [ref=e31]
+              - generic [ref=e33]:
+                - link "Medlemmar" [ref=e34] [cursor=pointer]:
+                  - /url: /staff/medlemmar
+                  - img [ref=e35]
+                  - generic [ref=e40]: Medlemmar
+                - link "Personal" [ref=e41] [cursor=pointer]:
+                  - /url: /staff/verksamhet/personal
+                  - img [ref=e42]
+                  - generic [ref=e54]: Personal
+                - link "Inställningar" [ref=e55] [cursor=pointer]:
+                  - /url: /staff/installningar
+                  - img [ref=e56]
+                  - generic [ref=e59]: Inställningar
+                - link "Statistik" [ref=e60] [cursor=pointer]:
+                  - /url: /staff/statistik
+                  - img [ref=e61]
+                  - generic [ref=e63]: Statistik
+            - link "Aktiviteter" [ref=e64] [cursor=pointer]:
+              - /url: /staff/aktiviteter
+              - img [ref=e65]
+              - generic [ref=e67]: Aktiviteter
+            - link "Kurser" [ref=e68] [cursor=pointer]:
+              - /url: /staff/kurser
+              - img [ref=e69]
+              - generic [ref=e71]: Kurser
+            - link "Rumsbokningar" [ref=e72] [cursor=pointer]:
+              - /url: /staff/rum
+              - img [ref=e73]
+              - generic [ref=e76]: Rumsbokningar
+        - generic [ref=e77]:
+          - paragraph [ref=e78]: Gamification
+          - generic [ref=e79]:
+            - link "Meritpoäng" [ref=e80]:
+              - /url: "#"
+              - img [ref=e81]
+              - generic [ref=e87]: Meritpoäng
+            - link "Turneringar" [ref=e88]:
+              - /url: "#"
+              - img [ref=e89]
+              - generic [ref=e95]: Turneringar
+      - generic [ref=e96]:
+        - generic [ref=e97] [cursor=pointer]:
+          - generic [ref=e98]: A
+          - generic [ref=e99]:
+            - generic [ref=e100]: Anna Test
+            - generic [ref=e101]: anna_test@noisify.se
+          - link [ref=e102]:
+            - /url: /staff/installningar
+            - img [ref=e103]
+        - button "Logga ut" [ref=e107]:
+          - img [ref=e108]
+          - text: Logga ut
+    - generic [ref=e111]:
+      - banner [ref=e112]:
+        - generic [ref=e113]:
+          - button "Test Fritidsgård" [ref=e115]:
+            - generic [ref=e116]: Test Fritidsgård
+            - img [ref=e117]
+          - generic [ref=e119]:
+            - link [ref=e120] [cursor=pointer]:
+              - /url: /staff
+              - img [ref=e121]
+            - img [ref=e124]
+            - generic [ref=e126]:
+              - link "Dashboard" [ref=e127] [cursor=pointer]:
+                - /url: /staff
+              - img [ref=e128]
+            - generic [ref=e131]: Medlemmar
+        - button [ref=e135]:
+          - img [ref=e136]
+      - main [ref=e138]:
+        - generic [ref=e140]:
+          - generic [ref=e142]:
+            - generic [ref=e143]: Home / Dashboard / Medlemmar
+            - heading "Medlemmar" [level=1] [ref=e144]
+            - paragraph [ref=e145]: Här visas alla verksamhetens medlemmar.
+          - generic [ref=e146]:
+            - generic [ref=e148]:
+              - generic [ref=e149]:
+                - button "Alla" [ref=e150]
+                - button "Aktiv" [ref=e151]
+                - button "Inaktiv" [ref=e152]
+              - generic [ref=e153]:
+                - generic [ref=e154]:
+                  - img [ref=e155]
+                  - textbox "Sök medlem..." [active] [ref=e158]: Test_1763784806815
+                - button "Ny medlem" [ref=e159]:
+                  - img [ref=e160]
+                  - text: Ny medlem
+            - table [ref=e162]:
+              - rowgroup [ref=e163]:
+                - row "Medlem Status Detaljer Konto typ" [ref=e164]:
+                  - cell "Medlem" [ref=e165]
+                  - cell "Status" [ref=e166]
+                  - cell "Detaljer" [ref=e167]
+                  - cell "Konto typ" [ref=e168]
+                  - cell [ref=e169]
+              - rowgroup [ref=e170]:
+                - row "Inga medlemmar hittades Prova att ändra filter eller sökterm" [ref=e171]:
+                  - cell "Inga medlemmar hittades Prova att ändra filter eller sökterm" [ref=e172]:
+                    - generic [ref=e173]:
+                      - img [ref=e174]
+                      - paragraph [ref=e179]: Inga medlemmar hittades
+                      - paragraph [ref=e180]: Prova att ändra filter eller sökterm
+  - generic [ref=e185] [cursor=pointer]:
+    - button "Open Next.js Dev Tools" [ref=e186]:
+      - img [ref=e187]
+    - generic [ref=e190]:
+      - button "Open issues overlay" [ref=e191]:
+        - generic [ref=e192]:
+          - generic [ref=e193]: "0"
+          - generic [ref=e194]: "1"
+        - generic [ref=e195]: Issue
+      - button "Collapse issues badge" [ref=e196]:
+        - img [ref=e197]
+  - alert [ref=e199]
+```
