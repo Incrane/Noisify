@@ -27,7 +27,7 @@ interface Booking {
     room_name?: string
 }
 
-import MemberSearch from './member-search'
+import MemberSearch, { Member } from './member-search'
 
 interface BookingModalProps {
     isOpen: boolean
@@ -65,7 +65,7 @@ export default function BookingModal({
     const [status, setStatus] = useState('approved')
 
     // Member selection state
-    const [selectedMember, setSelectedMember] = useState<{ profileId: string, alias: string } | null>(null)
+    const [selectedMember, setSelectedMember] = useState<Member | null>(null)
 
     useEffect(() => {
         if (isOpen) {

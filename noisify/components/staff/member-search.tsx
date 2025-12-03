@@ -5,7 +5,7 @@ import { Search, User, Loader2, X } from 'lucide-react'
 import { getMembers } from '@/app/staff/medlemmar/actions'
 // import { useDebounce } from '@/hooks/use-debounce'
 
-interface Member {
+export interface Member {
     id: string
     profileId: string
     alias: string
@@ -71,8 +71,8 @@ export default function MemberSearch({ orgId, onSelect, selectedMember }: Member
                         <div className="flex items-center gap-2">
                             <p className="text-xs text-indigo-600">Medlem</p>
                             <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${selectedMember.status === 'active'
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-slate-100 text-slate-600'
+                                ? 'bg-green-100 text-green-700'
+                                : 'bg-slate-100 text-slate-600'
                                 }`}>
                                 {selectedMember.status === 'active' ? 'Aktiv' : 'Inaktiv'}
                             </span>
@@ -130,8 +130,8 @@ export default function MemberSearch({ orgId, onSelect, selectedMember }: Member
                                     </div>
                                 </div>
                                 <span className={`text-xs px-2 py-1 rounded-full font-medium ${member.status === 'active'
-                                        ? 'bg-green-100 text-green-700'
-                                        : 'bg-slate-100 text-slate-600'
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-slate-100 text-slate-600'
                                     }`}>
                                     {member.status === 'active' ? 'Aktiv' : 'Inaktiv'}
                                 </span>

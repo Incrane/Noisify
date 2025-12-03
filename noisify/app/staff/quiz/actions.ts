@@ -622,7 +622,8 @@ export async function submitAnswer(
     isCorrect,
     pointsEarned,
     newStreak,
-    totalScore: currentScore + pointsEarned
+    totalScore: currentScore + pointsEarned,
+    correctAnswerIndex: options.findIndex(o => o.isCorrect)
   };
 }
 
