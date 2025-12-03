@@ -42,7 +42,32 @@ export default function RichTextEditor({ value, onChange, placeholder = 'Skriv h
 
     return (
         <div className={`border border-slate-200 rounded-lg overflow-hidden bg-white focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-transparent transition-all ${className}`}>
-            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 py-1.5">
+            <div className="flex items-center gap-1 border-b border-slate-100 bg-slate-50 px-2 py-1.5 flex-wrap">
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 1 }).run()}
+                    className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('heading', { level: 1 }) ? 'bg-slate-200 text-slate-900' : 'text-slate-500'}`}
+                    title="Rubrik 1"
+                >
+                    <span className="font-bold text-xs">H1</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
+                    className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('heading', { level: 2 }) ? 'bg-slate-200 text-slate-900' : 'text-slate-500'}`}
+                    title="Rubrik 2"
+                >
+                    <span className="font-bold text-xs">H2</span>
+                </button>
+                <button
+                    type="button"
+                    onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
+                    className={`p-1.5 rounded hover:bg-slate-200 transition-colors ${editor.isActive('heading', { level: 3 }) ? 'bg-slate-200 text-slate-900' : 'text-slate-500'}`}
+                    title="Rubrik 3"
+                >
+                    <span className="font-bold text-xs">H3</span>
+                </button>
+                <div className="w-px h-4 bg-slate-300 mx-1" />
                 <button
                     type="button"
                     onClick={() => editor.chain().focus().toggleBold().run()}

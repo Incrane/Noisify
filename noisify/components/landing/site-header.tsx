@@ -122,6 +122,7 @@ export default function SiteHeader({
         <nav className="hidden md:flex flex-1 justify-center gap-8 text-sm font-medium text-slate-600">
           <Link href="/aktiviteter" className="hover:text-indigo-600 transition-colors">Aktiviteter</Link>
           <Link href="/organisationer" className="hover:text-indigo-600 transition-colors">Fritidsgårdar</Link>
+          <Link href="/funktioner" className="hover:text-indigo-600 transition-colors">Funktioner</Link>
           <Link href="/for-organisationer" className="hover:text-indigo-600 transition-colors">För Organisationer</Link>
         </nav>
 
@@ -249,6 +250,9 @@ export default function SiteHeader({
                     </Link>
                     <Link href="/organisationer" className="text-lg font-medium text-slate-900 hover:text-indigo-600" onClick={() => setIsOpen(false)}>
                       Fritidsgårdar
+                    </Link>
+                    <Link href="/funktioner" className="text-lg font-medium text-slate-900 hover:text-indigo-600" onClick={() => setIsOpen(false)}>
+                      Funktioner
                     </Link>
                     <Link href="/for-organisationer" className="text-lg font-medium text-slate-900 hover:text-indigo-600" onClick={() => setIsOpen(false)}>
                       För Organisationer

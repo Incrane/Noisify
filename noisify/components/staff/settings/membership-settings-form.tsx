@@ -22,6 +22,7 @@ import {
     DialogTrigger,
 } from "@/components/ui/dialog";
 import { MultiSelect } from "@/components/ui/multi-select";
+import { DatePicker } from "@/components/ui/date-picker";
 import { uploadImage } from "@/utils/supabase/storage";
 import Image from "next/image";
 
@@ -58,6 +59,10 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
     const [cardColor, setCardColor] = useState(CARD_COLORS[0].value);
     const [cardIcon, setCardIcon] = useState("User");
     const [requiresVerified, setRequiresVerified] = useState(false);
+
+    // Dates
+    const [startDate, setStartDate] = useState<Date | undefined>(undefined);
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
 
     // Refs for form reset
     const formRef = useRef<HTMLFormElement>(null);
@@ -112,6 +117,8 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
         setCardIcon(type.card_design?.icon || "User");
         setRequiresVerified(type.requires_verified_profile || false);
         setTargetSubgroups(type.target_subgroups || []);
+        setStartDate(type.start_date ? new Date(type.start_date) : undefined);
+        setEndDate(type.end_date ? new Date(type.end_date) : undefined);
 
         // Set previews if URLs exist
         if (type.card_design?.background_url) {
@@ -136,8 +143,7 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
             (form.elements.namedItem("name") as HTMLInputElement).value = type.name || "";
             (form.elements.namedItem("description") as HTMLTextAreaElement).value = type.description || "";
             (form.elements.namedItem("price") as HTMLInputElement).value = type.price || 0;
-            (form.elements.namedItem("start_date") as HTMLInputElement).value = type.start_date ? type.start_date.split('T')[0] : "";
-            (form.elements.namedItem("end_date") as HTMLInputElement).value = type.end_date ? type.end_date.split('T')[0] : "";
+            // Dates are handled by state
             (form.elements.namedItem("min_age") as HTMLInputElement).value = type.min_age || "";
             (form.elements.namedItem("max_age") as HTMLInputElement).value = type.max_age || "";
             (form.elements.namedItem("approval_flow") as HTMLSelectElement).value = type.approval_flow || "AUTO";
@@ -154,6 +160,8 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
         setCardIcon("User");
         setRequiresVerified(false);
         setTargetSubgroups([]);
+        setStartDate(undefined);
+        setEndDate(undefined);
         setBackgroundImage(null);
         setBackgroundImagePreview(null);
         setIconImage(null);
@@ -181,8 +189,8 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
                 name: formData.get("name"),
                 description: formData.get("description"),
                 price: Number(formData.get("price")),
-                start_date: formData.get("start_date"),
-                end_date: formData.get("end_date"),
+                start_date: startDate ? format(startDate, 'yyyy-MM-dd') : null,
+                end_date: endDate ? format(endDate, 'yyyy-MM-dd') : null,
                 min_age: Number(formData.get("min_age")) || null,
                 max_age: Number(formData.get("max_age")) || null,
                 target_subgroups: targetSubgroups,
@@ -317,11 +325,19 @@ export default function MembershipSettingsForm({ membershipTypes, roleId }: Memb
                                 <div className="grid grid-cols-2 gap-4">
                                     <div className="space-y-2">
                                         <Label htmlFor="start_date">Startdatum</Label>
-                                        <Input id="start_date" name="start_date" type="date" required disabled={isReadOnly} />
+                                        <DatePicker
+                                            date={startDate}
+                                            setDate={setStartDate}
+                                            disabled={isReadOnly}
+                                        />
                                     </div>
                                     <div className="space-y-2">
                                         <Label htmlFor="end_date">Slutdatum</Label>
-                                        <Input id="end_date" name="end_date" type="date" required disabled={isReadOnly} />
+                                        <DatePicker
+                                            date={endDate}
+                                            setDate={setEndDate}
+                                            disabled={isReadOnly}
+                                        />
                                     </div>
                                 </div>
                                 <div className="grid grid-cols-2 gap-4">

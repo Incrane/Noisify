@@ -18,6 +18,9 @@ export function MessageInput() {
         try {
             await sendMessage(content);
             setContent('');
+        } catch (error) {
+            // Error is already handled/toasted in chat-provider
+            console.error('Failed to send message:', error);
         } finally {
             setIsSending(false);
         }

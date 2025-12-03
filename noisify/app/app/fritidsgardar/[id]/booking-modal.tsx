@@ -4,6 +4,8 @@ import { useState, useTransition } from "react";
 import { X, Calendar, Clock, Loader2 } from "lucide-react";
 import { bookRoom } from "./actions";
 import { useRouter } from "next/navigation";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 interface BookingModalProps {
     room: any;
@@ -13,7 +15,7 @@ interface BookingModalProps {
 }
 
 export default function BookingModal({ room, orgId, isOpen, onClose }: BookingModalProps) {
-    const [date, setDate] = useState("");
+    const [date, setDate] = useState<Date | undefined>(undefined);
     const [startTime, setStartTime] = useState("");
     const [endTime, setEndTime] = useState("");
     const [title, setTitle] = useState("");
@@ -26,8 +28,9 @@ export default function BookingModal({ room, orgId, isOpen, onClose }: BookingMo
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
 
-        const startDateTime = `${date}T${startTime}:00`;
-        const endDateTime = `${date}T${endTime}:00`;
+        const dateStr = date ? format(date, 'yyyy-MM-dd') : '';
+        const startDateTime = `${dateStr}T${startTime}:00`;
+        const endDateTime = `${dateStr}T${endTime}:00`;
 
         startTransition(async () => {
             const result = await bookRoom(room.id, orgId, startDateTime, endDateTime, title, description);
@@ -55,13 +58,10 @@ export default function BookingModal({ room, orgId, isOpen, onClose }: BookingMo
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Datum</label>
                         <div className="relative">
-                            <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-                            <input
-                                type="date"
-                                required
-                                value={date}
-                                onChange={(e) => setDate(e.target.value)}
-                                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                            <DatePicker
+                                date={date}
+                                setDate={setDate}
+                                className="w-full"
                             />
                         </div>
                     </div>

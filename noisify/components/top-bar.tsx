@@ -35,7 +35,7 @@ export default function TopBar({ userEmail, userAlias, userAvatar, isStaff = fal
     const formattedDate = dateString.charAt(0).toUpperCase() + dateString.slice(1)
 
     return (
-        <div className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm py-2' : 'bg-transparent py-6'}`}>
+        <div className={`fixed top-0 left-0 md:left-64 right-0 z-50 transition-all duration-300 ${isScrolled ? 'bg-white/80 backdrop-blur-md border-b border-slate-200 shadow-sm py-2' : 'bg-transparent py-6'}`}>
             <div className="max-w-screen-2xl mx-auto px-4 md:px-8 flex items-center justify-between gap-4">
 
                 {/* Left Side - Greeting (Collapses on scroll) */}

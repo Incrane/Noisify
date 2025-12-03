@@ -6,7 +6,7 @@ import { redirect } from 'next/navigation'
 
 export async function registerForActivity(activityId: string) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -54,7 +54,7 @@ export async function registerForActivity(activityId: string) {
 
 export async function unregisterFromActivity(activityId: string) {
   const supabase = await createClient()
-  
+
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
@@ -79,4 +79,36 @@ export async function unregisterFromActivity(activityId: string) {
 
   revalidatePath(`/app/aktiviteter/${activityId}`)
   revalidatePath('/app/aktiviteter')
+}
+
+export async function respondToInvitation(registrationId: string, accept: boolean) {
+  const supabase = await createClient()
+
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { success: false, error: 'Unauthorized' }
+
+  // Verify ownership
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id')
+    .eq('user_id', user.id)
+    .single()
+
+  if (!profile) return { success: false, error: 'Profile not found' }
+
+  const status = accept ? 'ACCEPTED' : 'REJECTED'
+
+  const { error } = await supabase
+    .from('registration')
+    .update({ status })
+    .eq('id', registrationId)
+    .eq('profile_id', profile.id)
+
+  if (error) {
+    console.error('Respond invitation error:', error)
+    return { success: false, error: 'Kunde inte uppdatera inbjudan' }
+  }
+
+  revalidatePath('/app/mina-anmalningar')
+  return { success: true }
 }

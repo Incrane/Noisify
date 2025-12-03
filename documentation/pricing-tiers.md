@@ -13,7 +13,7 @@ The pricing model is designed to allow small youth centers to get started easily
 **Cost:** 0 SEK / month
 
 **Allowed:**
-- **Members:** Up to 100 active members.
+- **Members:** Up to 30 active members.
 - **Staff:** Up to 3 staff accounts (Role 1 & 2).
 - **Activities:** Unlimited creation of activities.
 - **Storage:** 500 MB for images/media.
@@ -34,8 +34,8 @@ The pricing model is designed to allow small youth centers to get started easily
 **Cost:** [Price TBD] SEK / month
 
 **Allowed:**
-- **Members:** Up to 1,000 active members.
-- **Staff:** Up to 10 staff accounts.
+- **Members:** Unlimited active members.
+- **Staff:** Unlimited staff accounts.
 - **Activities:** Unlimited.
 - **Storage:** 10 GB for images/video.
 - **Advanced Reporting:** Export data, detailed statistics on attendance and demographics.

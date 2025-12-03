@@ -37,47 +37,68 @@ export default async function NewActivityPage() {
   const { data: categories } = await supabase.from('categories').select('id, category_name:cat_name');
 
   // Fetch Target Subgroups
-  const { data: targetSubgroups } = await supabase.from('target_subgroups').select('id, subgroup_name');
+  const { data: targetSubgroups } = await supabase.from('target_subgroups').select('id, subgroup_name:name');
 
   // Fetch Staff Members for the initial/selected Org
   const { data: staffData } = await supabase
     .from('org_user')
     .select('profile_id, profiles(alias, public_name)')
     .eq('org_id', initialOrgId);
-  
+
   const staffMembers = staffData?.map((s: any) => ({
-      profile_id: s.profile_id,
-      alias: s.profiles?.alias,
-      public_name: s.profiles?.public_name
+    profile_id: s.profile_id,
+    alias: s.profiles?.alias,
+    public_name: s.profiles?.public_name
+  })) || [];
+
+  // Fetch ALL organizations for address lookup
+  const { data: rawOrganizations, error: orgError } = await supabase
+    .from('organizations')
+    .select('id, org_namn, adress, city_id');
+
+  if (orgError) console.error('Error fetching orgs:', orgError);
+
+  const allOrganizations = rawOrganizations?.map((org: any) => ({
+    id: org.id,
+    org_namn: org.org_namn,
+    address: org.adress, // Map DB 'adress' to component 'address'
+    city_id: org.city_id
   })) || [];
 
   // Format Orgs for dropdown
   const formattedOrgs = (orgs as unknown as OrgWithDetails[]).map(o => ({
-      id: o.org_id,
-      org_namn: o.organizations?.org_namn || 'Okänd'
+    id: o.org_id,
+    org_namn: o.organizations?.org_namn || 'Okänd'
   }));
+
+
+
+  // Fetch Genders
+  const { data: genders } = await supabase.from('gender').select('id, gender');
 
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
         <h1 className="text-2xl font-bold text-slate-900">Ny aktivitet</h1>
         <div className="flex items-center gap-2 text-sm text-slate-500 mt-1">
-            <Link href="/staff" className="hover:text-slate-900">Home</Link>
-            <span>/</span>
-            <Link href="/staff" className="hover:text-slate-900">Dashboard</Link>
-            <span>/</span>
-            <Link href="/staff/aktiviteter" className="hover:text-slate-900">Aktivitet</Link>
-            <span>/</span>
-            <span className="font-medium text-slate-900">Ny</span>
+          <Link href="/staff" className="hover:text-slate-900">Home</Link>
+          <span>/</span>
+          <Link href="/staff" className="hover:text-slate-900">Dashboard</Link>
+          <span>/</span>
+          <Link href="/staff/aktiviteter" className="hover:text-slate-900">Aktivitet</Link>
+          <span>/</span>
+          <span className="font-medium text-slate-900">Ny</span>
         </div>
       </div>
 
-      <ActivityForm 
+      <ActivityForm
         organizations={formattedOrgs}
         categories={categories || []}
         targetSubgroups={targetSubgroups || []}
         staffMembers={staffMembers}
         initialOrgId={initialOrgId}
+        allOrganizations={allOrganizations || []}
+        genders={genders || []}
       />
     </div>
   );

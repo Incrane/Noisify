@@ -26,6 +26,9 @@ export interface QuizOption {
   isCorrect: boolean;
 }
 
+// Client-safe option (no isCorrect)
+export type ClientQuizOption = Omit<QuizOption, 'isCorrect'>;
+
 // Quiz Question
 export interface QuizQuestion {
   id: string;
@@ -143,7 +146,7 @@ export interface LeaderboardEntry {
 }
 
 // Game Events for Realtime
-export type GameEvent = 
+export type GameEvent =
   | { type: 'PLAYER_JOINED'; participant: QuizParticipant }
   | { type: 'PLAYER_LEFT'; participant_id: string }
   | { type: 'GAME_STARTED' }
@@ -183,18 +186,18 @@ export const ANSWER_COLORS = {
 // Points calculation
 export const calculatePoints = (isCorrect: boolean, timeTakenMs: number, timeLimitMs: number, currentStreak: number): number => {
   if (!isCorrect) return 0;
-  
+
   // Base points: 1000
   const basePoints = 1000;
-  
+
   // Time bonus: Up to 500 extra points for answering quickly
   const timeRatio = Math.max(0, 1 - (timeTakenMs / timeLimitMs));
   const timeBonus = Math.round(timeRatio * 500);
-  
+
   // Streak bonus: 10% per streak level (max 50%)
   const streakMultiplier = Math.min(0.5, currentStreak * 0.1);
   const streakBonus = Math.round(basePoints * streakMultiplier);
-  
+
   return basePoints + timeBonus + streakBonus;
 };
 

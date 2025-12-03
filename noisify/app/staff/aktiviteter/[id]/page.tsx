@@ -1,9 +1,10 @@
 import { createClient } from "@/utils/supabase/server";
 import Link from "next/link";
-import { ArrowLeft, Calendar, Clock, MapPin, CheckCircle, XCircle, HelpCircle } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, CheckCircle, XCircle, HelpCircle, Dices } from "lucide-react";
 import StaffRegistrationManager from "../../../../components/staff/staff-registration-manager";
 import RegistrationStatusButton from "@/components/staff/registration-status-button";
 import RemoveParticipantButton from "@/components/staff/remove-participant-button";
+import RunLotteryButton from "@/components/staff/run-lottery-button";
 
 interface RegistrationWithProfile {
     registration_id: string;
@@ -82,6 +83,9 @@ export default async function StaffActivityDetailPage({
                     <ArrowLeft className="w-4 h-4" /> Tillbaka
                 </Link>
                 <div className="flex gap-2">
+                    {activity.activity_type === 'RANDOM' && (
+                        <RunLotteryButton activityId={id} />
+                    )}
                     {/* Edit Button */}
                     <Link href={`/staff/aktiviteter/${id}/redigera`} className="px-4 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-700 hover:bg-slate-50">
                         Redigera
@@ -118,9 +122,17 @@ export default async function StaffActivityDetailPage({
             {/* Pending Registrations */}
             {pending.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
-                    <div className="bg-yellow-50 px-6 py-4 border-b border-yellow-100 flex justify-between items-center">
-                        <h2 className="font-bold text-yellow-800 flex items-center gap-2">
-                            <HelpCircle className="w-5 h-5" /> Väntande godkännande ({pending.length})
+                    <div className={`${activity.activity_type === 'RANDOM' ? 'bg-purple-50 border-purple-100 text-purple-800' : 'bg-yellow-50 border-yellow-100 text-yellow-800'} px-6 py-4 border-b flex justify-between items-center`}>
+                        <h2 className="font-bold flex items-center gap-2">
+                            {activity.activity_type === 'RANDOM' ? (
+                                <>
+                                    <Dices className="w-5 h-5" /> Deltar i lottning ({pending.length})
+                                </>
+                            ) : (
+                                <>
+                                    <HelpCircle className="w-5 h-5" /> Väntande godkännande ({pending.length})
+                                </>
+                            )}
                         </h2>
                     </div>
                     <div className="divide-y divide-slate-100">
@@ -130,24 +142,26 @@ export default async function StaffActivityDetailPage({
                                     <div className="font-medium text-slate-900">{reg.profiles?.alias || 'Okänd'}</div>
                                     <div className="text-xs text-slate-500">Reg: {new Date(reg.created_at).toLocaleDateString()}</div>
                                 </div>
-                                <div className="flex gap-2">
-                                    <RegistrationStatusButton
-                                        registrationId={reg.registration_id}
-                                        activityId={id}
-                                        status="ACCEPTED"
-                                        className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-colors flex items-center gap-1"
-                                    >
-                                        <CheckCircle className="w-3 h-3" /> Godkänn
-                                    </RegistrationStatusButton>
-                                    <RegistrationStatusButton
-                                        registrationId={reg.registration_id}
-                                        activityId={id}
-                                        status="REJECTED"
-                                        className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-colors flex items-center gap-1"
-                                    >
-                                        <XCircle className="w-3 h-3" /> Neka
-                                    </RegistrationStatusButton>
-                                </div>
+                                {activity.activity_type !== 'RANDOM' && (
+                                    <div className="flex gap-2">
+                                        <RegistrationStatusButton
+                                            registrationId={reg.registration_id}
+                                            activityId={id}
+                                            status="ACCEPTED"
+                                            className="px-3 py-1.5 bg-green-100 text-green-700 rounded-lg text-xs font-bold hover:bg-green-200 transition-colors flex items-center gap-1"
+                                        >
+                                            <CheckCircle className="w-3 h-3" /> Godkänn
+                                        </RegistrationStatusButton>
+                                        <RegistrationStatusButton
+                                            registrationId={reg.registration_id}
+                                            activityId={id}
+                                            status="REJECTED"
+                                            className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-xs font-bold hover:bg-red-200 transition-colors flex items-center gap-1"
+                                        >
+                                            <XCircle className="w-3 h-3" /> Neka
+                                        </RegistrationStatusButton>
+                                    </div>
+                                )}
                             </div>
                         ))}
                     </div>

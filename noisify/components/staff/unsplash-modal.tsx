@@ -4,6 +4,8 @@ import { useState, useEffect } from 'react'
 import { createClient } from '@/utils/supabase/client'
 import { Search, X, Loader2 } from 'lucide-react'
 import Image from 'next/image'
+import { toast } from 'sonner'
+import { FunctionsHttpError } from '@supabase/supabase-js'
 
 interface UnsplashPhoto {
   id: string
@@ -83,6 +85,14 @@ export default function UnsplashModal({ isOpen, onClose, onSelect, orgId }: Unsp
       setHasMore(results.length > 0)
     } catch (err) {
       console.error('Unsplash search error:', err)
+
+      if (err instanceof FunctionsHttpError) {
+        const errorMessage = await err.context.json()
+        console.error('Function error details:', errorMessage)
+        toast.error(`Sökfel: ${errorMessage.error || 'Okänt fel i funktionen'}`)
+      } else {
+        toast.error('Kunde inte söka efter bilder')
+      }
     } finally {
       setLoading(false)
     }
@@ -149,10 +159,19 @@ export default function UnsplashModal({ isOpen, onClose, onSelect, orgId }: Unsp
 
     } catch (err) {
       console.error('Select error:', err)
+
+      if (err instanceof FunctionsHttpError) {
+        const errorMessage = await err.context.json()
+        console.error('Function error details:', errorMessage)
+        toast.error(`Nedladdningsfel: ${errorMessage.error || 'Okänt fel i funktionen'}`)
+      } else {
+        toast.error('Kunde inte ladda ner bild')
+      }
+
       // Mock success for testing/dev if backend fails
       // Use the Unsplash URL directly as public URL
-      onSelect(photo.urls.regular)
-      onClose()
+      // onSelect(photo.urls.regular)
+      // onClose()
     } finally {
       setSelecting(null)
     }
@@ -173,21 +192,35 @@ export default function UnsplashModal({ isOpen, onClose, onSelect, orgId }: Unsp
 
         {/* Search */}
         <div className="p-4 border-b border-slate-100 bg-slate-50/50">
-          <form onSubmit={handleSearch} className="flex gap-3">
+          <div className="flex gap-3">
             <div className="relative flex-1">
               <Search className="absolute left-3 top-2.5 w-5 h-5 text-slate-400" />
               <input
                 type="text"
                 value={query}
                 onChange={e => setQuery(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    setPage(1)
+                    searchUnsplash(query, 1)
+                  }
+                }}
                 placeholder="Sök (testa engelska för bättre resultat)..."
                 className="w-full pl-10 pr-4 py-2 rounded-lg border border-slate-300 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               />
             </div>
-            <button type="submit" className="px-6 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm">
+            <button
+              type="button"
+              onClick={() => {
+                setPage(1)
+                searchUnsplash(query, 1)
+              }}
+              className="px-6 py-2 bg-white border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors shadow-sm"
+            >
               Sök
             </button>
-          </form>
+          </div>
         </div>
 
         {/* Grid */}

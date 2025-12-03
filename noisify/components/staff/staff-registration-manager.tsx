@@ -1,59 +1,91 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { Search, UserPlus, X, Check, Loader2, Mail } from 'lucide-react';
+import { useState, useTransition, useEffect } from 'react';
+import { Search, UserPlus, X, Check, Loader2, Mail, Users } from 'lucide-react';
 import { toast } from 'sonner';
-import { searchUsers, createRegistration } from '@/app/staff/aktiviteter/actions';
+import { inviteMembers } from '@/app/staff/aktiviteter/actions';
+import { getMembers } from '@/app/staff/medlemmar/actions';
+import { useParams } from 'next/navigation';
+import { createClient } from '@/utils/supabase/client';
 
 interface RegistrationManagerProps {
   activityId: string;
 }
 
-interface Profile {
-  id: string;
-  alias: string | null;
-  fodd_ar: number | null;
+interface Member {
+  id: string; // Membership ID
+  profileId: string;
+  alias: string;
+  birthYear: number;
 }
 
 export default function StaffRegistrationManager({ activityId }: RegistrationManagerProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [query, setQuery] = useState('');
-  const [results, setResults] = useState<Profile[]>([]);
-  const [isSearching, setIsSearching] = useState(false);
+  const [members, setMembers] = useState<Member[]>([]);
+  const [selectedProfileIds, setSelectedProfileIds] = useState<Set<string>>(new Set());
+  const [isLoading, setIsLoading] = useState(false);
   const [isPending, startTransition] = useTransition();
+  const [orgId, setOrgId] = useState<string | null>(null);
 
-  const handleSearch = async (term: string) => {
-    setQuery(term);
-    if (term.length < 2) {
-      setResults([]);
-      return;
-    }
+  // Fetch activity's org ID
+  useEffect(() => {
+    const fetchOrgId = async () => {
+      const supabase = createClient();
+      const { data } = await supabase.from('activity').select('owner_org_id').eq('id', activityId).single();
+      if (data) setOrgId(data.owner_org_id);
+    };
+    if (isOpen) fetchOrgId();
+  }, [activityId, isOpen]);
 
-    setIsSearching(true);
-    try {
-      const users = await searchUsers(term);
-      setResults(users);
-    } catch (error) {
-      console.error(error);
-    } finally {
-      setIsSearching(false);
+  // Fetch members when orgId is available
+  useEffect(() => {
+    const fetchMembers = async () => {
+      if (!orgId) return;
+      setIsLoading(true);
+      try {
+        // Fetch active members
+        const data = await getMembers(orgId, query, 'active');
+        setMembers(data as unknown as Member[]);
+      } catch (error) {
+        console.error(error);
+        toast.error('Kunde inte hämta medlemmar');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    const timer = setTimeout(() => {
+      if (isOpen) fetchMembers();
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [orgId, query, isOpen]);
+
+  const toggleSelection = (profileId: string) => {
+    const newSelected = new Set(selectedProfileIds);
+    if (newSelected.has(profileId)) {
+      newSelected.delete(profileId);
+    } else {
+      newSelected.add(profileId);
     }
+    setSelectedProfileIds(newSelected);
   };
 
-  const handleAction = async (profileId: string, status: 'ACCEPTED' | 'INVITED') => {
+  const handleInvite = async () => {
+    if (selectedProfileIds.size === 0) return;
+
     startTransition(async () => {
       try {
-        const result = await createRegistration(activityId, profileId, status);
+        const result = await inviteMembers(activityId, Array.from(selectedProfileIds));
 
         if (result.success) {
-          toast.success(result.message || 'Deltagare tillagd!');
-
-          // Reset state
+          toast.success(result.message);
           setIsOpen(false);
+          setSelectedProfileIds(new Set());
           setQuery('');
-          setResults([]);
         } else {
-          toast.error(result.error || 'Ett fel uppstod');
+          toast.error(result.error);
         }
       } catch (error) {
         console.error(error);
@@ -77,62 +109,78 @@ export default function StaffRegistrationManager({ activityId }: RegistrationMan
     <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 p-4">
       <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden flex flex-col max-h-[80vh]">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50">
-          <h3 className="font-bold text-slate-900">Lägg till deltagare</h3>
+          <h3 className="font-bold text-slate-900 flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-600" />
+            Bjud in medlemmar
+          </h3>
           <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-slate-600">
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="p-4 space-y-4">
+        <div className="p-4 space-y-4 flex-1 overflow-hidden flex flex-col">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
-              placeholder="Sök på alias..."
+              placeholder="Sök medlem..."
               value={query}
-              onChange={(e) => handleSearch(e.target.value)}
+              onChange={(e) => setQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500"
               autoFocus
             />
-            {isSearching && (
+            {isLoading && (
               <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-indigo-600 animate-spin" />
             )}
           </div>
 
-          <div className="space-y-1 overflow-y-auto max-h-[300px]">
-            {results.length === 0 && query.length >= 2 && !isSearching && (
+          <div className="flex-1 overflow-y-auto space-y-1 pr-1">
+            {members.length === 0 && !isLoading && (
               <div className="text-center py-8 text-slate-500 text-sm">
-                <p>Inga användare hittades med alias &quot;{query}&quot;</p>
-                <p className="mt-1 text-xs text-slate-400">Prova ett annat alias</p>
+                Inga aktiva medlemmar hittades.
               </div>
             )}
 
-            {results.map((user) => (
-              <div key={user.id} className="flex items-center justify-between p-3 hover:bg-slate-50 rounded-lg border border-transparent hover:border-slate-100 transition-colors">
-                <div>
-                  <div className="font-medium text-slate-900">{user.alias || 'Inget alias'}</div>
-                  <div className="text-xs text-slate-500">Född {user.fodd_ar}</div>
+            {members.map((member) => {
+              const isSelected = selectedProfileIds.has(member.profileId);
+              return (
+                <div
+                  key={member.profileId}
+                  onClick={() => toggleSelection(member.profileId)}
+                  className={`flex items-center justify-between p-3 rounded-lg border cursor-pointer transition-all ${isSelected
+                      ? 'bg-indigo-50 border-indigo-200'
+                      : 'hover:bg-slate-50 border-transparent hover:border-slate-100'
+                    }`}
+                >
+                  <div>
+                    <div className="font-medium text-slate-900">{member.alias || 'Inget alias'}</div>
+                    <div className="text-xs text-slate-500">Född {member.birthYear}</div>
+                  </div>
+                  <div className={`w-5 h-5 rounded-full border flex items-center justify-center transition-colors ${isSelected ? 'bg-indigo-600 border-indigo-600 text-white' : 'border-slate-300'
+                    }`}>
+                    {isSelected && <Check className="w-3 h-3" />}
+                  </div>
                 </div>
-                <div className="flex gap-2">
-                  <button
-                    disabled={isPending}
-                    onClick={() => handleAction(user.id, 'INVITED')}
-                    className="p-2 text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors disabled:opacity-50"
-                    title="Bjud in"
-                  >
-                    <Mail className="w-4 h-4" />
-                  </button>
-                  <button
-                    disabled={isPending}
-                    onClick={() => handleAction(user.id, 'ACCEPTED')}
-                    className="p-2 text-green-600 hover:bg-green-50 rounded-lg transition-colors disabled:opacity-50"
-                    title="Lägg till direkt"
-                  >
-                    <Check className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            ))}
+              );
+            })}
+          </div>
+
+          <div className="pt-2 border-t border-slate-100">
+            <button
+              onClick={handleInvite}
+              disabled={selectedProfileIds.size === 0 || isPending}
+              className="w-full py-2.5 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+            >
+              {isPending ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Skickar inbjudningar...
+                </>
+              ) : (
+                <>
+                  <Mail className="w-4 h-4" /> Bjud in {selectedProfileIds.size} valda
+                </>
+              )}
+            </button>
           </div>
         </div>
       </div>

@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Trophy, Flame, Check, X, Loader2 } from 'lucide-react';
 import { submitAnswer, getLeaderboard } from '@/app/staff/quiz/actions';
-import { QuizOption, QuizParticipant, LeaderboardEntry } from '@/types/quiz';
+import { QuizOption, QuizParticipant, LeaderboardEntry, ClientQuizOption } from '@/types/quiz';
 
 interface Question {
   id: string;
   question_text: string;
   time_limit_seconds: number;
   order_index: number;
-  options: QuizOption[];
+  options: ClientQuizOption[];
 }
 
 interface SessionData {
@@ -52,7 +52,7 @@ export default function PlayerModeClient({ session, quiz, participant, exitPath 
   const [score, setScore] = useState(participant.score);
   const [streak, setStreak] = useState(participant.streak);
   const [selectedAnswer, setSelectedAnswer] = useState<number | null>(null);
-  const [lastResult, setLastResult] = useState<{ isCorrect: boolean; points: number } | null>(null);
+  const [lastResult, setLastResult] = useState<{ isCorrect: boolean; points: number; correctAnswerIndex?: number } | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [questionStartTime, setQuestionStartTime] = useState<number | null>(null);
@@ -130,7 +130,8 @@ export default function PlayerModeClient({ session, quiz, participant, exitPath 
       if (result.success) {
         setLastResult({
           isCorrect: result.isCorrect ?? false,
-          points: result.pointsEarned ?? 0
+          points: result.pointsEarned ?? 0,
+          correctAnswerIndex: result.correctAnswerIndex
         });
         if (result.totalScore !== undefined) setScore(result.totalScore);
         if (result.newStreak !== undefined) setStreak(result.newStreak);
@@ -188,7 +189,7 @@ export default function PlayerModeClient({ session, quiz, participant, exitPath 
           <ResultView
             lastResult={lastResult}
             selectedAnswer={selectedAnswer}
-            correctAnswer={currentQuestion?.options.findIndex(o => o.isCorrect) ?? -1}
+            correctAnswer={lastResult?.correctAnswerIndex ?? -1}
             score={score}
             streak={streak}
             error={submitError}
@@ -301,7 +302,7 @@ function ResultView({
   streak,
   error
 }: {
-  lastResult: { isCorrect: boolean; points: number } | null;
+  lastResult: { isCorrect: boolean; points: number; correctAnswerIndex?: number } | null;
   selectedAnswer: number | null;
   correctAnswer: number;
   score: number;

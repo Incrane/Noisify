@@ -9,6 +9,8 @@ import CompleteProfileModal from "@/components/profile/complete-profile-modal";
 import { getAvatars } from "@/app/app/profil/completion-actions";
 import UnreadChatBadge from "@/components/unread-chat-badge";
 
+import UserDropdown from "@/components/user-dropdown";
+
 export default async function AppLayout({
   children,
 }: {
@@ -138,9 +140,12 @@ export default async function AppLayout({
         </div>
         <div className="flex items-center gap-4">
           <NotificationsDropdown />
-          <div className="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-sm">
-            {user.email?.charAt(0).toUpperCase()}
-          </div>
+          <UserDropdown
+            userEmail={user.email || ''}
+            userAlias={profile?.alias}
+            userAvatar={profile?.image_url}
+            isStaff={isStaff}
+          />
         </div>
       </header>
 

@@ -20,6 +20,7 @@ export async function getMembers(orgId: string, query: string = '', filter: 'all
   }
 
   let data = rpcData as any[];
+  console.log('RPC Data count:', data.length);
 
   if (filter === 'active') {
     data = data.filter((m: any) => m.membership_state === 'active');
@@ -50,6 +51,7 @@ export async function getMembers(orgId: string, query: string = '', filter: 'all
     );
   }
 
+  console.log('Filtered members count:', members.length);
   return members;
 }
 
@@ -105,7 +107,7 @@ export async function createLocalMember(orgId: string, alias: string, _orgIdNum:
 
 export async function updateMemberStatus(membershipId: string, status: 'active' | 'rejected' | 'cancelled', orgId: string) {
   const supabase = await createClient();
-  
+
   // Check auth
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Unauthorized' };
@@ -124,7 +126,7 @@ export async function updateMemberStatus(membershipId: string, status: 'active' 
 
   const { error } = await supabase
     .from('memberships')
-    .update({ 
+    .update({
       membership_state: status,
       state_changed_at: new Date().toISOString(),
       // Optionally set state_reason if we passed it

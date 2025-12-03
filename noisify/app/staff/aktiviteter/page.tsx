@@ -35,16 +35,20 @@ export default async function StaffActivitiesPage(props: {
     .order("skapad_datum", { ascending: false });
 
   if (selectedOrgId) {
-    query = query.eq("agande_org_id", selectedOrgId);
+    query = query.eq("owner_org_id", selectedOrgId);
   } else {
-    query = query.in("agande_org_id", orgIds);
+    query = query.in("owner_org_id", orgIds);
   }
 
   // Apply Status Filter
+  const now = new Date().toISOString();
+
   if (status === "archived") {
-    query = query.eq("activity_status", "ARCHIVED");
+    // Archived activities are either explicitly ARCHIVED or have passed their start date
+    query = query.or(`activity_status.eq.ARCHIVED,start_datum_tid.lt.${now}`);
   } else {
-    query = query.neq("activity_status", "ARCHIVED");
+    // Active activities are NOT ARCHIVED and have NOT passed their start date
+    query = query.neq("activity_status", "ARCHIVED").gte("start_datum_tid", now);
   }
 
   const { data: activities } = await query;
