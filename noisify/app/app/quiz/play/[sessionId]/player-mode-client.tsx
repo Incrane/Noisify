@@ -5,14 +5,14 @@ import { useRouter } from 'next/navigation';
 import { createClient } from '@/utils/supabase/client';
 import { Trophy, Flame, Check, X, Loader2 } from 'lucide-react';
 import { submitAnswer, getLeaderboard } from '@/app/staff/quiz/actions';
-import { QuizOption, QuizParticipant, LeaderboardEntry } from '@/types/quiz';
+import { QuizOption, QuizParticipant, LeaderboardEntry, ClientQuizOption } from '@/types/quiz';
 
 interface Question {
   id: string;
   question_text: string;
   time_limit_seconds: number;
   order_index: number;
-  options: QuizOption[];
+  options: ClientQuizOption[];
 }
 
 interface SessionData {

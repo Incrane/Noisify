@@ -92,6 +92,63 @@ export async function updateActivity(formData: FormData) {
   const deadlineStr = formData.get('registration_deadline') as string;
   const registrationDeadline = deadlineStr ? new Date(deadlineStr).toISOString() : null;
 
+  // New Fields
+  const activityType = formData.get('activity_type') as string || 'NORMAL';
+  const lotteryDateStr = formData.get('lottery_date') as string;
+  const confirmationDeadlineStr = formData.get('confirmation_deadline') as string;
+  const rrule = formData.get('rrule') as string || null;
+
+  const lotteryDate = lotteryDateStr ? new Date(lotteryDateStr).toISOString() : null;
+  const confirmationDeadline = confirmationDeadlineStr ? new Date(confirmationDeadlineStr).toISOString() : null;
+
+  const hideAddress = formData.get('hide_address') === 'true';
+
+  // File Upload - Registration Slip
+  const registrationSlipFile = formData.get('registration_slip_file') as File;
+  const removeRegistrationSlip = formData.get('remove_registration_slip') === 'true';
+  let registrationSlipUrl: string | null | undefined = undefined;
+
+  if (removeRegistrationSlip) {
+    registrationSlipUrl = null;
+  } else if (registrationSlipFile && registrationSlipFile.size > 0) {
+    const fileExt = registrationSlipFile.name.split('.').pop();
+    const fileName = `${activityId}/registration_slip_${Date.now()}.${fileExt}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('aktiviteter')
+      .upload(fileName, registrationSlipFile, { upsert: true });
+
+    if (uploadError) {
+      console.error('Upload error:', uploadError);
+      throw new Error('Kunde inte ladda upp anmälningslapp');
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('aktiviteter')
+      .getPublicUrl(fileName);
+    registrationSlipUrl = publicUrl;
+  }
+
+  // File Upload - Image
+  const imageFile = formData.get('image_file') as File;
+  let uploadedImageUrl: string | null = null;
+
+  if (imageFile && imageFile.size > 0) {
+    const fileExt = imageFile.name.split('.').pop();
+    const fileName = `${activityId}/image_${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from('aktiviteter')
+      .upload(fileName, imageFile, { upsert: true });
+
+    if (uploadError) {
+      console.error('Image upload error:', uploadError);
+    } else {
+      const { data: { publicUrl } } = supabase.storage
+        .from('aktiviteter')
+        .getPublicUrl(fileName);
+      uploadedImageUrl = publicUrl;
+    }
+  }
+
   // Dates
   const dateStart = formData.get('date_start') as string;
   const timeStart = formData.get('time_start') as string;
@@ -107,7 +164,7 @@ export async function updateActivity(formData: FormData) {
   if (action === 'draft') status = 'DRAFT';
   else if (action === 'archive') status = 'ARCHIVED';
 
-  // Define type for update payload
+  // Define type for update payload (extended for new fields not yet in types)
   type UpdateActivityPayload = {
     name: string;
     description: string;
@@ -123,6 +180,12 @@ export async function updateActivity(formData: FormData) {
     updated_at: string;
     image_url?: string;
     status?: string;
+    activity_type: string;
+    lottery_date?: string | null;
+    confirmation_deadline?: string | null;
+    rrule?: string | null;
+    registration_slip_url?: string | null;
+    hide_address?: boolean;
   };
 
   const updateData: UpdateActivityPayload = {
@@ -137,13 +200,18 @@ export async function updateActivity(formData: FormData) {
     age_min: ageMin,
     age_max: ageMax,
     registration_rules: registrationRules,
-    updated_at: new Date().toISOString()
+    updated_at: new Date().toISOString(),
+    activity_type: activityType,
+    lottery_date: lotteryDate,
+    confirmation_deadline: confirmationDeadline,
+    rrule: rrule,
+    hide_address: hideAddress
   };
 
   if (imageUrl) updateData.image_url = imageUrl;
+  if (uploadedImageUrl) updateData.image_url = uploadedImageUrl;
+  if (registrationSlipUrl !== undefined) updateData.registration_slip_url = registrationSlipUrl;
 
-  // Only update status if an action was explicitly clicked (otherwise keep existing?)
-  // Actually, the form always submits via button with name="action".
   if (action) {
     updateData.status = status;
   }
@@ -156,6 +224,59 @@ export async function updateActivity(formData: FormData) {
   if (error) {
     console.error('Update activity error:', error);
     throw new Error(`Kunde inte uppdatera aktivitet: ${error.message}`);
+  }
+
+  // Handle Junction Tables (Delete then Insert)
+
+  // 1. Categories
+  const categories = formData.getAll('categories') as string[];
+  await supabase.from('activity_categories').delete().eq('activity_id', activityId);
+  if (categories.length > 0) {
+    await supabase.from('activity_categories').insert(
+      categories.map(catId => ({ activity_id: activityId, category_id: catId }))
+    );
+  }
+
+  // 2. Target Subgroups
+  const targetSubgroups = formData.getAll('target_subgroups') as string[];
+  await supabase.from('activity_target_subgroups').delete().eq('activity_id', activityId);
+  if (targetSubgroups.length > 0) {
+    await supabase.from('activity_target_subgroups').insert(
+      targetSubgroups.map(subId => ({ activity_id: activityId, sub_group_id: subId }))
+    );
+  }
+
+  // 3. Genders
+  const genders = formData.getAll('genders') as string[];
+  // Assuming activity_gender table exists
+  const { error: deleteGenderError } = await supabase.from('activity_gender').delete().eq('activity_id', activityId);
+  if (!deleteGenderError && genders.length > 0) {
+    await supabase.from('activity_gender').insert(
+      genders.map(genderId => ({ activity_id: activityId, gender_id: genderId }))
+    );
+  }
+
+  // 4. Collaborators
+  const collaborators = formData.getAll('collaborators') as string[];
+  await supabase.from('activity_organisation').delete().eq('activity_id', activityId);
+  if (collaborators.length > 0) {
+    await supabase.from('activity_organisation').insert(
+      collaborators.map(orgId => ({ activity_id: activityId, org_id: orgId, can_edit: true }))
+    );
+  }
+
+  // 5. Invited Members
+  if (registrationRules === 'SELECTED_MEMBERS') {
+    const invitedMembers = formData.getAll('invited_members') as string[];
+    if (invitedMembers.length > 0) {
+      await inviteMembers(activityId, invitedMembers);
+    }
+  }
+
+  // 4. Contact Persons (Update created_by for now, as per existing logic)
+  const contactPersons = formData.getAll('contact_persons') as string[];
+  if (contactPersons.length > 0) {
+    await supabase.from('activity').update({ created_by: contactPersons[0] }).eq('id', activityId);
   }
 
   revalidatePath('/staff/aktiviteter');
@@ -196,6 +317,17 @@ export async function createActivity(formData: FormData) {
   const deadlineStr = formData.get('registration_deadline') as string;
   const registrationDeadline = deadlineStr ? new Date(deadlineStr).toISOString() : null;
 
+  // New Fields
+  const activityType = formData.get('activity_type') as string || 'NORMAL';
+  const lotteryDateStr = formData.get('lottery_date') as string;
+  const confirmationDeadlineStr = formData.get('confirmation_deadline') as string;
+  const rrule = formData.get('rrule') as string || null;
+
+  const lotteryDate = lotteryDateStr ? new Date(lotteryDateStr).toISOString() : null;
+  const confirmationDeadline = confirmationDeadlineStr ? new Date(confirmationDeadlineStr).toISOString() : null;
+
+  const hideAddress = formData.get('hide_address') === 'true';
+
   // Dates
   const dateStart = formData.get('date_start') as string;
   const timeStart = formData.get('time_start') as string;
@@ -205,12 +337,12 @@ export async function createActivity(formData: FormData) {
   const startsAt = new Date(`${dateStart}T${timeStart}`).toISOString();
   const endsAt = new Date(`${dateEnd}T${timeEnd}`).toISOString();
 
-  // Status (Draft/Publish)
-  // Default to PUBLISHED if not specified, or handle 'action' field if we add it
-  // For now assuming PUBLISHED unless we implement draft logic fully
   const status = formData.get('status') as string || 'PUBLISHED';
+  const contactPersons = formData.getAll('contact_persons') as string[];
+  const createdBy = contactPersons.length > 0 ? contactPersons[0] : profile.id;
 
-  const { error } = await supabase.from('activity').insert({
+  // Insert first to get ID for file path
+  const { data: newActivity, error } = await supabase.from('activity').insert({
     owner_org_id: orgId,
     name,
     description,
@@ -223,20 +355,101 @@ export async function createActivity(formData: FormData) {
     registration_deadline: registrationDeadline,
     age_min: ageMin,
     age_max: ageMax,
-    activity_type: formData.get('activity_type') as string || 'NORMAL',
+    activity_type: activityType,
     status,
     visibility: formData.get('visibility') as string || 'PUBLIC',
     registration_rules: registrationRules,
-    created_by: profile.id
-  });
+    created_by: createdBy,
+    lottery_date: lotteryDate,
+    confirmation_deadline: confirmationDeadline,
+    rrule: rrule,
+    hide_address: hideAddress
+  }).select('id').single();
 
   if (error) {
     console.error('Create activity error:', error);
     throw new Error(`Kunde inte skapa aktivitet: ${error.message}`);
   }
 
-  revalidatePath('/staff/aktiviteter');
-  revalidatePath('/aktiviteter'); // Public list
+  const activityId = newActivity.id;
+
+  // File Upload - Registration Slip (After creation to use ID)
+  const registrationSlipFile = formData.get('registration_slip_file') as File;
+  if (registrationSlipFile && registrationSlipFile.size > 0) {
+    const fileExt = registrationSlipFile.name.split('.').pop();
+    const fileName = `${activityId}/registration_slip_${Date.now()}.${fileExt}`;
+    const { data: uploadData, error: uploadError } = await supabase.storage
+      .from('aktiviteter')
+      .upload(fileName, registrationSlipFile, { upsert: true });
+
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('aktiviteter')
+        .getPublicUrl(fileName);
+
+      // Update with URL
+      await supabase.from('activity').update({ registration_slip_url: publicUrl }).eq('id', activityId);
+    } else {
+      console.error('Upload error:', uploadError);
+      // We don't fail the whole creation if upload fails, but maybe we should warn?
+      // For now logging is enough.
+    }
+  }
+
+  // File Upload - Image (After creation)
+  const imageFile = formData.get('image_file') as File;
+  if (imageFile && imageFile.size > 0) {
+    const fileExt = imageFile.name.split('.').pop();
+    const fileName = `${activityId}/image_${Date.now()}.${fileExt}`;
+    const { error: uploadError } = await supabase.storage
+      .from('aktiviteter')
+      .upload(fileName, imageFile, { upsert: true });
+
+    if (!uploadError) {
+      const { data: { publicUrl } } = supabase.storage
+        .from('aktiviteter')
+        .getPublicUrl(fileName);
+
+      // Update with URL
+      await supabase.from('activity').update({ image_url: publicUrl }).eq('id', activityId);
+    } else {
+      console.error('Image upload error:', uploadError);
+    }
+  }
+
+  // Handle Junction Tables (Insert)
+
+  // 1. Categories
+  const categories = formData.getAll('categories') as string[];
+  if (categories.length > 0) {
+    await supabase.from('activity_categories').insert(
+      categories.map(catId => ({ activity_id: activityId, category_id: catId }))
+    );
+  }
+
+  // 2. Target Subgroups
+  const targetSubgroups = formData.getAll('target_subgroups') as string[];
+  if (targetSubgroups.length > 0) {
+    await supabase.from('activity_target_subgroups').insert(
+      targetSubgroups.map(subId => ({ activity_id: activityId, sub_group_id: subId }))
+    );
+  }
+
+  // 3. Genders
+  const genders = formData.getAll('genders') as string[];
+  if (genders.length > 0) {
+    await supabase.from('activity_gender').insert(
+      genders.map(genderId => ({ activity_id: activityId, gender_id: genderId }))
+    );
+  }
+
+  // 4. Collaborators
+  const collaborators = formData.getAll('collaborators') as string[];
+  if (collaborators.length > 0) {
+    await supabase.from('activity_organisation').insert(
+      collaborators.map(orgId => ({ activity_id: activityId, org_id: orgId, can_edit: true }))
+    );
+  }
   revalidatePath('/app/aktiviteter'); // App list
 }
 
@@ -311,4 +524,166 @@ export async function createRegistration(activityId: string, profileId: string, 
 
   revalidatePath(`/staff/aktiviteter/${activityId}`);
   return { success: true, message: "Registrering skapad" };
+}
+
+export async function runLottery(activityId: string) {
+  console.log('Running lottery for activity:', activityId);
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    console.log('User not authorized');
+    return { success: false, error: 'Unauthorized' };
+  }
+
+  // 1. Get Activity and Capacity
+  const { data: activity } = await supabase
+    .from('activity')
+    .select('capacity, reserve_capacity')
+    .eq('id', activityId)
+    .single();
+
+  if (!activity) {
+    console.log('Activity not found');
+    return { success: false, error: 'Activity not found' };
+  }
+  console.log('Activity found:', activity);
+
+  // 2. Get Pending Registrations
+  const { data: registrations } = await supabase
+    .from('registration')
+    .select('id')
+    .eq('activity_id', activityId)
+    .eq('status', 'PENDING');
+
+  console.log('Pending registrations:', registrations?.length);
+
+  if (!registrations || registrations.length === 0) {
+    return { success: false, error: 'Inga väntande registreringar att lotta bland.' };
+  }
+
+  // 3. Shuffle
+  const shuffled = registrations.sort(() => 0.5 - Math.random());
+
+  // 4. Distribute Spots
+  const capacity = activity.capacity || 0;
+
+  // Get current accepted count to know how many spots are left
+  const { count: currentAccepted } = await supabase
+    .from('registration')
+    .select('*', { count: 'exact', head: true })
+    .eq('activity_id', activityId)
+    .eq('status', 'ACCEPTED');
+
+  console.log('Current accepted:', currentAccepted);
+  console.log('Capacity:', capacity);
+
+  const spotsLeft = Math.max(0, capacity - (currentAccepted || 0));
+  console.log('Spots left:', spotsLeft);
+
+  const winners = shuffled.slice(0, spotsLeft);
+  const others = shuffled.slice(spotsLeft);
+
+  console.log('Winners:', winners.length);
+  console.log('Others (Waitlist):', others.length);
+
+  // 5. Update Statuses
+  // Winners -> ACCEPTED
+  if (winners.length > 0) {
+    const { error: winnerError } = await supabase
+      .from('registration')
+      .update({ status: 'ACCEPTED' })
+      .in('id', winners.map(r => r.id));
+
+    if (winnerError) console.error('Error updating winners:', winnerError);
+  }
+
+  // Others -> WAITLISTED
+  if (others.length > 0) {
+    const { error: waitlistError } = await supabase
+      .from('registration')
+      .update({ status: 'WAITLISTED' })
+      .in('id', others.map(r => r.id));
+
+    if (waitlistError) console.error('Error updating waitlist:', waitlistError);
+  }
+
+  revalidatePath(`/staff/aktiviteter/${activityId}`);
+  return { success: true, message: `Lottning klar. ${winners.length} godkända, ${others.length} till reservlistan.` };
+}
+export async function inviteMembers(activityId: string, profileIds: string[]) {
+  console.log('inviteMembers called with:', { activityId, profileIdsCount: profileIds.length });
+  const supabase = await createClient();
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) return { success: false, error: 'Unauthorized' };
+
+  // Get activity details for notification
+  const { data: activity, error: activityError } = await supabase
+    .from('activity')
+    .select('name, owner_org_id')
+    .eq('id', activityId)
+    .single();
+
+  if (activityError) {
+    console.error('Error fetching activity for invite:', activityError);
+  }
+
+  if (!activity) return { success: false, error: 'Activity not found' };
+
+  // Get Org Name
+  const { data: org } = await supabase
+    .from('organizations')
+    .select('org_namn')
+    .eq('id', activity.owner_org_id)
+    .single();
+
+  const orgName = org?.org_namn || 'Organisationen';
+
+  const results = [];
+  const errors = [];
+
+  for (const profileId of profileIds) {
+    // Check if already registered
+    const { data: existing } = await supabase
+      .from('registration')
+      .select('id, status')
+      .eq('activity_id', activityId)
+      .eq('profile_id', profileId)
+      .single();
+
+    if (existing) {
+      if (existing.status === 'REJECTED' || existing.status === 'CANCELLED') {
+        // Re-invite
+        const { error } = await supabase
+          .from('registration')
+          .update({ status: 'INVITED' })
+          .eq('id', existing.id);
+
+        if (error) errors.push(`Kunde inte återinbjuda ${profileId}`);
+        else results.push(profileId);
+      } else {
+        // Already active/pending/invited
+        continue;
+      }
+    } else {
+      // Create new invitation
+      const { error } = await supabase
+        .from('registration')
+        .insert({
+          activity_id: activityId,
+          profile_id: profileId,
+          status: 'INVITED'
+        });
+
+      if (error) errors.push(`Kunde inte bjuda in ${profileId}`);
+      else results.push(profileId);
+    }
+  }
+
+  revalidatePath(`/staff/aktiviteter/${activityId}`);
+
+  if (errors.length > 0) {
+    return { success: true, message: `Bjudit in ${results.length} medlemmar. Misslyckades med ${errors.length}.`, warning: errors.join(', ') };
+  }
+
+  return { success: true, message: `Bjudit in ${results.length} medlemmar.` };
 }

@@ -2,10 +2,11 @@
 
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Trash2, Save, Image as ImageIcon, ArrowLeft } from 'lucide-react'
-import { createRoom, updateRoom } from '@/app/staff/rum/actions'
+import { Trash2, Save, Image as ImageIcon, ArrowLeft, Plus } from 'lucide-react'
+import { createRoom, updateRoom, createPerk } from '@/app/staff/rum/actions'
 import UnsplashModal from './unsplash-modal'
 import Image from 'next/image'
+import { toast } from 'sonner'
 
 interface RoomData {
     id?: string
@@ -16,19 +17,27 @@ interface RoomData {
     is_bookable: boolean
     needs_approval: boolean
     org_id?: string
+    required_perk_id?: string | null
+}
+
+interface Perk {
+    id: string
+    title: string
 }
 
 export default function RoomForm({
     initialData,
-    orgId
+    orgId,
+    perks = []
 }: {
     initialData?: RoomData
     orgId: string
+    perks?: Perk[]
 }) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
     const [error, setError] = useState<string | null>(null)
-    
+
     // Form State
     const [name, setName] = useState(initialData?.name || '')
     const [description, setDescription] = useState(initialData?.description || '')
@@ -36,9 +45,31 @@ export default function RoomForm({
     const [selectedImage, setSelectedImage] = useState<string | null>(initialData?.image_url || null)
     const [isBookable, setIsBookable] = useState(initialData?.is_bookable ?? true)
     const [needsApproval, setNeedsApproval] = useState(initialData?.needs_approval ?? false)
-    
+    const [requiredPerkId, setRequiredPerkId] = useState(initialData?.required_perk_id || '')
+
+    // Perk Creation State
+    const [isCreatingPerk, setIsCreatingPerk] = useState(false)
+    const [newPerkTitle, setNewPerkTitle] = useState("")
+    const [localPerks, setLocalPerks] = useState<Perk[]>(perks)
+
     // Unsplash State
     const [showUnsplashModal, setShowUnsplashModal] = useState(false)
+
+    async function handleCreatePerk() {
+        if (!newPerkTitle.trim()) return
+
+        try {
+            const newPerk = await createPerk(orgId, newPerkTitle)
+            setLocalPerks([...localPerks, newPerk])
+            setRequiredPerkId(newPerk.id)
+            setIsCreatingPerk(false)
+            setNewPerkTitle("")
+            toast.success("Behörighet skapad")
+        } catch (e) {
+            console.error("Failed to create perk", e)
+            toast.error("Kunde inte skapa behörighet")
+        }
+    }
 
     async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
         event.preventDefault()
@@ -48,8 +79,10 @@ export default function RoomForm({
         const formData = new FormData(event.currentTarget)
 
         if (selectedImage) formData.append('image_url', selectedImage)
+        formData.append('org_id', orgId)
         formData.append('is_bookable', String(isBookable))
         formData.append('needs_approval', String(needsApproval))
+        if (requiredPerkId) formData.append('required_perk_id', requiredPerkId)
 
         // Ensure basic fields are present
         formData.set('name', name)
@@ -59,14 +92,17 @@ export default function RoomForm({
         try {
             if (initialData?.id) {
                 await updateRoom(initialData.id, formData)
+                toast.success("Rummet har uppdaterats")
                 router.refresh()
             } else {
-                const newId = await createRoom(formData)
-                router.push(`/staff/rum/${newId}`)
+                await createRoom(formData)
+                toast.success("Rummet har skapats")
+                router.push('/staff/rum')
             }
         } catch (e: unknown) {
             const message = e instanceof Error ? e.message : 'Ett oväntat fel inträffade'
             setError(message)
+            toast.error(message)
             setIsSubmitting(false)
         }
     }
@@ -111,10 +147,10 @@ export default function RoomForm({
                             <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Omslagsbild</h3>
                             <div className={`relative h-64 rounded-xl border-2 border-dashed transition-all overflow-hidden group
                                 ${selectedImage ? 'border-slate-200' : 'bg-indigo-50/50 border-indigo-100 hover:border-indigo-300'}`}>
-                                
+
                                 {selectedImage ? (
                                     <>
-                                        <Image src={selectedImage} alt="Room cover" fill className="object-cover" />
+                                        <Image src={selectedImage} alt="Room cover" fill className="object-cover" sizes="(max-width: 1024px) 100vw, 66vw" />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                                         <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -153,7 +189,7 @@ export default function RoomForm({
 
                         {/* Basic Info */}
                         <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-4">
-                             <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Grundinformation</h3>
+                            <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Grundinformation</h3>
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Rumsnamn *</label>
                                 <input
@@ -185,7 +221,7 @@ export default function RoomForm({
                     <div className="space-y-6">
                         <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm space-y-6">
                             <h3 className="text-sm font-bold text-slate-900 mb-4 uppercase tracking-wide">Inställningar</h3>
-                            
+
                             <div>
                                 <label className="block text-sm font-medium text-slate-700 mb-1">Max antal personer</label>
                                 <input
@@ -197,6 +233,64 @@ export default function RoomForm({
                                     placeholder="0"
                                 />
                                 <p className="text-xs text-slate-500 mt-1">Lämna tomt eller 0 för obegränsat</p>
+                            </div>
+
+                            <div>
+                                <label className="block text-sm font-medium text-slate-700 mb-1">Kräver behörighet (Perk)</label>
+                                {isCreatingPerk ? (
+                                    <div className="flex gap-2 items-center">
+                                        <input
+                                            type="text"
+                                            value={newPerkTitle}
+                                            onChange={(e) => setNewPerkTitle(e.target.value)}
+                                            placeholder="Namn på behörighet"
+                                            className="flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                                            autoFocus
+                                        />
+                                        <button
+                                            type="button"
+                                            onClick={handleCreatePerk}
+                                            disabled={!newPerkTitle.trim()}
+                                            className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50"
+                                        >
+                                            Spara
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setIsCreatingPerk(false)
+                                                setNewPerkTitle("")
+                                            }}
+                                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg text-sm font-medium hover:bg-slate-200"
+                                        >
+                                            Avbryt
+                                        </button>
+                                    </div>
+                                ) : (
+                                    <div className="flex gap-2">
+                                        <select
+                                            value={requiredPerkId}
+                                            onChange={e => setRequiredPerkId(e.target.value)}
+                                            className="flex-1 rounded-lg border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm bg-white"
+                                        >
+                                            <option value="">Ingen behörighet krävs</option>
+                                            {localPerks.map(perk => (
+                                                <option key={perk.id} value={perk.id}>
+                                                    {perk.title}
+                                                </option>
+                                            ))}
+                                        </select>
+                                        <button
+                                            type="button"
+                                            onClick={() => setIsCreatingPerk(true)}
+                                            className="px-3 py-2 bg-slate-100 text-slate-600 rounded-lg font-medium hover:bg-slate-200 transition-colors"
+                                            title="Skapa ny behörighet"
+                                        >
+                                            <Plus className="w-5 h-5" />
+                                        </button>
+                                    </div>
+                                )}
+                                <p className="text-xs text-slate-500 mt-1">Endast medlemmar med denna perk kan boka.</p>
                             </div>
 
                             <div className="pt-4 border-t border-slate-100 space-y-4">

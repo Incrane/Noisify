@@ -511,12 +511,26 @@ export async function submitAnswer(
   // Get the question to check if answer is correct
   const { data: session } = await supabase
     .from('quiz_sessions')
-    .select('quiz_id, current_question_index')
+    .select('quiz_id, current_question_index, question_started_at')
     .eq('id', sessionId)
     .single();
 
   if (!session || session.current_question_index !== questionIndex) {
     return { success: false, error: 'Frågan är inte aktiv' };
+  }
+
+  // Validate timing
+  if (session.question_started_at) {
+    const serverStartTime = new Date(session.question_started_at).getTime();
+    const serverTimeTaken = Date.now() - serverStartTime;
+    const diff = serverTimeTaken - timeTakenMs;
+
+    // Allow 5 seconds buffer for latency/clock skew
+    if (diff > 5000) {
+      console.warn(`Suspicious timing: Server=${serverTimeTaken}, Client=${timeTakenMs}, Diff=${diff}`);
+      // We can either reject or clamp. Rejecting is safer against cheating.
+      return { success: false, error: 'Svaret ogiltigt (tidsavvikelse)' };
+    }
   }
 
   // Use admin client to fetch question details (bypass RLS)

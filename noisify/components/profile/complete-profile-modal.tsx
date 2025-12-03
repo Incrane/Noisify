@@ -15,6 +15,8 @@ import { Label } from "@/components/ui/label";
 import AvatarPicker from "./avatar-picker";
 import { completeProfile, checkAlias } from "@/app/app/profil/completion-actions";
 import { Loader2 } from "lucide-react";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 
 interface CompleteProfileModalProps {
     isOpen: boolean;
@@ -53,7 +55,7 @@ export default function CompleteProfileModal({
         targetSubgroup: initialData?.targetSubgroup || "",
         avatarUrl: initialData?.avatarUrl || "",
         phoneNumber: initialData?.phoneNumber || "",
-        birthDate: initialData?.birthDate || "",
+        birthDate: initialData?.birthDate ? new Date(initialData.birthDate) : undefined as Date | undefined,
     });
 
     const [aliasError, setAliasError] = useState<string | null>(null);
@@ -104,7 +106,7 @@ export default function CompleteProfileModal({
                 targetSubgroup: formData.targetSubgroup,
                 avatarUrl: formData.avatarUrl,
                 phoneNumber: formData.phoneNumber,
-                birthDate: formData.birthDate,
+                birthDate: formData.birthDate ? format(formData.birthDate, 'yyyy-MM-dd') : "",
             });
 
             // Refresh page to update state and close modal (via parent re-render)
@@ -277,12 +279,10 @@ export default function CompleteProfileModal({
                         <div className="grid grid-cols-2 gap-5">
                             <div className="space-y-2">
                                 <Label htmlFor="birthDate" className="text-slate-600 font-medium">Födelsedatum</Label>
-                                <Input
-                                    id="birthDate"
-                                    type="date"
-                                    value={formData.birthDate}
-                                    onChange={(e) => setFormData({ ...formData, birthDate: e.target.value })}
-                                    className="bg-slate-50 border-slate-200 focus:bg-white transition-colors h-11"
+                                <DatePicker
+                                    date={formData.birthDate}
+                                    setDate={(date) => setFormData({ ...formData, birthDate: date })}
+                                    placeholder="Välj datum"
                                 />
                             </div>
                             <div className="space-y-2">

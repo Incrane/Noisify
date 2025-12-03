@@ -162,7 +162,7 @@ export default async function PublicActivityDetailPage({
                     <MapPin className="w-4 h-4" /> Plats
                   </div>
                   <p className="font-medium text-slate-900">
-                    {activity.plats || 'Ingen plats angiven'}
+                    {activity.hide_address ? 'Platsinformation tillgänglig vid anmälan' : (activity.plats || 'Ingen plats angiven')}
                   </p>
                 </div>
                 <div className="space-y-1">

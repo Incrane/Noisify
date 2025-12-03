@@ -180,6 +180,9 @@ export function ChatProvider({ children, orgId }: { children: ReactNode; orgId?:
             if (error) throw error;
         } catch (error) {
             console.error('Error sending message:', error);
+            // Log full error object for debugging
+            console.log('Full error object:', JSON.stringify(error, null, 2));
+
             toast.error('Kunde inte skicka meddelande');
             throw error;
         }

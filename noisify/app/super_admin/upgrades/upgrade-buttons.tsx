@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { CheckCircle, XCircle, Calendar as CalendarIcon } from "lucide-react";
+import { CheckCircle, XCircle } from "lucide-react";
 import { processUpgrade } from "../actions";
+import { DatePicker } from "@/components/ui/date-picker";
+import { format } from "date-fns";
 import {
     Dialog,
     DialogContent,
@@ -25,8 +27,8 @@ export default function UpgradeActionButtons({
     requestedTier: string;
 }) {
     const [isOpen, setIsOpen] = useState(false);
-    const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
-    const [endDate, setEndDate] = useState("");
+    const [startDate, setStartDate] = useState<Date | undefined>(new Date());
+    const [endDate, setEndDate] = useState<Date | undefined>(undefined);
     const [loading, setLoading] = useState(false);
 
     const handleApprove = async () => {
@@ -35,8 +37,8 @@ export default function UpgradeActionButtons({
             await processUpgrade(
                 orgId,
                 requestedTier,
-                new Date(startDate),
-                endDate ? new Date(endDate) : null
+                startDate || new Date(),
+                endDate || null
             );
             toast.success("Uppgradering godkänd");
             setIsOpen(false);
@@ -79,20 +81,17 @@ export default function UpgradeActionButtons({
                     <div className="grid gap-4 py-4">
                         <div className="grid gap-2">
                             <Label htmlFor="start-date">Startdatum</Label>
-                            <Input
-                                id="start-date"
-                                type="date"
-                                value={startDate}
-                                onChange={(e) => setStartDate(e.target.value)}
+                            <DatePicker
+                                date={startDate}
+                                setDate={setStartDate}
                             />
                         </div>
                         <div className="grid gap-2">
                             <Label htmlFor="end-date">Slutdatum (valfritt)</Label>
-                            <Input
-                                id="end-date"
-                                type="date"
-                                value={endDate}
-                                onChange={(e) => setEndDate(e.target.value)}
+                            <DatePicker
+                                date={endDate}
+                                setDate={setEndDate}
+                                placeholder="Välj slutdatum"
                             />
                         </div>
                     </div>

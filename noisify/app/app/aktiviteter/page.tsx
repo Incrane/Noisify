@@ -11,7 +11,11 @@ interface RegistrationStatus {
   status: string;
 }
 
-export default async function ActivitiesPage() {
+export default async function ActivitiesPage({
+  searchParams,
+}: {
+  searchParams: { [key: string]: string | string[] | undefined };
+}) {
   const supabase = await createClient();
 
   const {
@@ -40,6 +44,16 @@ export default async function ActivitiesPage() {
     return <div>Kunde inte ladda aktiviteter.</div>;
   }
 
+  // Filter activities based on search query
+  const query = typeof searchParams.q === 'string' ? searchParams.q.toLowerCase() : '';
+
+  const filteredActivities = activities?.filter(activity => {
+    if (!query) return true;
+    const nameMatch = activity.name?.toLowerCase().includes(query);
+    const orgMatch = activity.org_namn?.toLowerCase().includes(query);
+    return nameMatch || orgMatch;
+  }) || [];
+
   // 3. Fetch User Registrations
   let myRegistrations: RegistrationStatus[] = [];
   const favoriteIds = new Set<string>();
@@ -59,7 +73,7 @@ export default async function ActivitiesPage() {
     if (regsResult.data) {
       myRegistrations = regsResult.data as unknown as RegistrationStatus[];
     }
-    
+
     if (favsResult.data) {
       favsResult.data.forEach((f: { activity_id: string }) => favoriteIds.add(f.activity_id));
     }
@@ -81,7 +95,7 @@ export default async function ActivitiesPage() {
       const isRelevant = ["ACCEPTED", "PENDING", "WAITLISTED", "INVITED"].includes(status);
       // Check if future
       const isFuture = new Date(activity.slut_datum_tid || activity.start_datum_tid) > new Date();
-      
+
       return isRelevant && isFuture;
     })
     .slice(0, 3) || [];
@@ -93,7 +107,7 @@ export default async function ActivitiesPage() {
       {/* Top Section: Banner & My Upcoming */}
       <div className="space-y-6">
         <InvitationBanner count={invitationCount} href="/app/mina-anmalningar?tab=inbjudningar" />
-        
+
         {myUpcomingActivities.length > 0 && (
           <section className="space-y-4">
             <h2 className="text-xl font-bold text-slate-900">Mina närmaste aktiviteter</h2>
@@ -121,10 +135,10 @@ export default async function ActivitiesPage() {
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activities?.map((activity) => {
+          {filteredActivities.map((activity) => {
             const myStatus = getRegistrationStatus(activity.activity_id);
             const isFav = favoriteIds.has(activity.activity_id);
-            
+
             return (
               <ActivityCard
                 key={activity.activity_id}
@@ -136,7 +150,7 @@ export default async function ActivitiesPage() {
             );
           })}
 
-          {activities?.length === 0 && (
+          {filteredActivities.length === 0 && (
             <div className="col-span-full py-12 text-center text-slate-500">
               Inga aktiviteter hittades.
             </div>

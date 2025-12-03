@@ -4,6 +4,8 @@ import { useState, useTransition } from 'react';
 import { X, Mail, UserPlus, Loader2 } from 'lucide-react';
 import { inviteMember, createLocalMember } from './actions';
 import { useRouter } from 'next/navigation';
+import { DatePicker } from '@/components/ui/date-picker';
+import { format } from 'date-fns';
 
 interface NewMemberModalProps {
   isOpen: boolean;
@@ -18,8 +20,8 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
 
   // Digital Member State
   const [digitalEmail, setDigitalEmail] = useState('');
-  const [digitalStartDate, setDigitalStartDate] = useState(new Date().toISOString().split('T')[0]);
-  const [digitalEndDate, setDigitalEndDate] = useState('');
+  const [digitalStartDate, setDigitalStartDate] = useState<Date | undefined>(new Date());
+  const [digitalEndDate, setDigitalEndDate] = useState<Date | undefined>(undefined);
 
   // Local Member State
   const [localAlias, setLocalAlias] = useState('');
@@ -29,12 +31,20 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
     e.preventDefault();
     startTransition(async () => {
       try {
-        const result = await inviteMember(orgId, digitalEmail, digitalStartDate, digitalEndDate);
+        const result = await inviteMember(
+          orgId,
+          digitalEmail,
+          digitalStartDate ? format(digitalStartDate, 'yyyy-MM-dd') : '',
+          digitalEndDate ? format(digitalEndDate, 'yyyy-MM-dd') : null
+        );
+
         if (result.error) {
           alert(result.error);
         } else {
           onClose();
           setDigitalEmail('');
+          setDigitalStartDate(new Date());
+          setDigitalEndDate(undefined);
           router.refresh();
         }
       } catch (error) {
@@ -69,11 +79,11 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       {/* Backdrop */}
-      <div 
+      <div
         className="fixed inset-0 bg-black/30 backdrop-blur-sm"
         onClick={onClose}
       />
-      
+
       {/* Modal Content */}
       <div className="relative bg-white rounded-2xl shadow-xl w-full max-w-md mx-4 overflow-hidden animate-in fade-in zoom-in-95 duration-200">
         {/* Header */}
@@ -84,7 +94,7 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
             </div>
             <h2 className="font-semibold text-slate-900">Ny medlem</h2>
           </div>
-          <button 
+          <button
             onClick={onClose}
             className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-50 rounded-lg transition-colors"
           >
@@ -97,21 +107,19 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
           <div className="flex gap-2 p-1 bg-slate-50 rounded-xl">
             <button
               onClick={() => setActiveTab('digital')}
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${
-                activeTab === 'digital'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'digital'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
               Digital medlem
             </button>
             <button
               onClick={() => setActiveTab('local')}
-              className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${
-                activeTab === 'local'
-                  ? 'bg-white text-slate-900 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              }`}
+              className={`flex-1 py-2 px-3 text-sm font-medium rounded-lg transition-all ${activeTab === 'local'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-700'
+                }`}
             >
               Local medlem
             </button>
@@ -153,11 +161,9 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
                       Medlemskap från
                     </label>
                     <div className="relative">
-                      <input
-                        type="date"
-                        value={digitalStartDate}
-                        onChange={(e) => setDigitalStartDate(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                      <DatePicker
+                        date={digitalStartDate}
+                        setDate={setDigitalStartDate}
                       />
                     </div>
                   </div>
@@ -166,11 +172,10 @@ export default function NewMemberModal({ isOpen, onClose, orgId }: NewMemberModa
                       Till och med
                     </label>
                     <div className="relative">
-                      <input
-                        type="date"
-                        value={digitalEndDate}
-                        onChange={(e) => setDigitalEndDate(e.target.value)}
-                        className="w-full px-3 py-2.5 bg-white border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm"
+                      <DatePicker
+                        date={digitalEndDate}
+                        setDate={setDigitalEndDate}
+                        placeholder="Välj slutdatum"
                       />
                     </div>
                   </div>

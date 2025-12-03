@@ -2,7 +2,7 @@ import { createAdminClient } from "@/utils/supabase/admin";
 import { createClient } from "@/utils/supabase/server";
 import { redirect, notFound } from "next/navigation";
 import PlayerModeClient from "@/app/app/quiz/play/[sessionId]/player-mode-client";
-import { QuizOption } from "@/types/quiz";
+import { QuizOption, ClientQuizOption } from "@/types/quiz";
 
 interface Props {
     searchParams: Promise<{
@@ -63,7 +63,9 @@ export default async function GuestPlayerPage({ searchParams }: Props) {
                 question_text: q.question_text,
                 time_limit_seconds: q.time_limit_seconds,
                 order_index: q.order_index,
-                options: q.options as QuizOption[]
+                options: (q.options as QuizOption[]).map(o => ({
+                    text: o.text
+                })) as ClientQuizOption[]
             }))
     };
 

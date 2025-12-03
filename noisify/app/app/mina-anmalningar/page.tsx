@@ -1,10 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
-import { Calendar, Clock, MapPin } from "lucide-react";
+import { Calendar, Clock, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
+import InvitationActions from "@/components/app/invitation-actions";
 
 export const revalidate = 0;
 
 interface Registration {
+  id: string; // Added ID
   status: string;
   created_at: string;
   activity: {
@@ -38,6 +40,7 @@ export default async function MyRegistrationsPage() {
   const { data: registrations, error } = await supabase
     .from("registration")
     .select(`
+      id,
       status,
       created_at,
       activity:activity_id (
@@ -60,12 +63,45 @@ export default async function MyRegistrationsPage() {
   const now = new Date();
   // Use proper type casting
   const regList = (registrations as unknown as Registration[]) || [];
-  const upcoming = regList.filter((r) => new Date(r.activity.starts_at) >= now);
-  const past = regList.filter((r) => new Date(r.activity.starts_at) < now);
+
+  const invited = regList.filter((r) => r.status === 'INVITED');
+  const upcoming = regList.filter((r) => r.status !== 'INVITED' && new Date(r.activity.starts_at) >= now);
+  const past = regList.filter((r) => r.status !== 'INVITED' && new Date(r.activity.starts_at) < now);
 
   return (
     <div className="space-y-8">
       <h1 className="text-2xl font-bold text-slate-900">Mina Anmälningar</h1>
+
+      {/* Invitations */}
+      {invited.length > 0 && (
+        <section className="bg-indigo-50 rounded-xl p-6 border border-indigo-100">
+          <h2 className="text-lg font-semibold text-indigo-900 mb-4 flex items-center gap-2">
+            <Mail className="w-5 h-5" /> Inbjudningar ({invited.length})
+          </h2>
+          <div className="space-y-4">
+            {invited.map((reg) => (
+              <div key={reg.activity.id} className="bg-white rounded-xl p-4 shadow-sm border border-indigo-100 flex flex-col sm:flex-row justify-between gap-4">
+                <div>
+                  <h3 className="font-bold text-slate-900 text-lg">{reg.activity.name}</h3>
+                  <div className="flex items-center gap-4 text-sm text-slate-500 mt-2">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="w-4 h-4" />
+                      {new Date(reg.activity.starts_at).toLocaleDateString()}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      {new Date(reg.activity.starts_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex items-center">
+                  <InvitationActions registrationId={reg.id} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Upcoming */}
       <section>

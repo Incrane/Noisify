@@ -363,7 +363,7 @@ export default function CourseForm({
 
                                 {selectedImage ? (
                                     <>
-                                        <Image src={selectedImage} alt="Course cover" fill className="object-cover" />
+                                        <Image src={selectedImage} alt="Course cover" fill className="object-cover" sizes="(max-width: 768px) 100vw, 100vw" />
                                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" />
                                         <div className="absolute top-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                                             <button
@@ -703,7 +703,7 @@ export default function CourseForm({
                                         </div>
                                         <div className="w-16 h-16 bg-slate-100 rounded-full mb-3 relative overflow-hidden">
                                             {inst.image_url ? (
-                                                <Image src={inst.image_url} alt={inst.name} fill className="object-cover" />
+                                                <Image src={inst.image_url} alt={inst.name} fill className="object-cover" sizes="64px" />
                                             ) : (
                                                 <div className="w-full h-full flex items-center justify-center text-slate-400 font-bold text-xl">
                                                     {inst.name.charAt(0)}

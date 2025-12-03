@@ -12,7 +12,7 @@ export default async function LoginPage(props: {
   return (
     <div className="min-h-screen bg-slate-50">
       <SiteHeader cities={cities} selectedCityName={cityName} savedCities={savedCities} />
-      
+
       <div className="flex items-center justify-center min-h-[calc(100vh-64px)] px-4">
         <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-2xl shadow-sm border border-slate-100">
           <div className="text-center">
@@ -39,6 +39,7 @@ export default async function LoginPage(props: {
                   required
                   className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
                   placeholder="namn@exempel.se"
+                  suppressHydrationWarning
                 />
               </div>
               <div>
@@ -53,6 +54,7 @@ export default async function LoginPage(props: {
                   required
                   className="mt-1 block w-full rounded-lg border border-slate-300 px-3 py-2 shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-indigo-500 sm:text-sm"
                   placeholder="••••••••"
+                  suppressHydrationWarning
                 />
               </div>
               <div className="flex items-center justify-between">
@@ -63,6 +65,7 @@ export default async function LoginPage(props: {
                     type="checkbox"
                     defaultChecked
                     className="h-4 w-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-600"
+                    suppressHydrationWarning
                   />
                   <label htmlFor="remember-me" className="ml-2 block text-sm text-slate-900">
                     Kom ihåg mig
@@ -84,7 +87,7 @@ export default async function LoginPage(props: {
                 {searchParams.error}
               </div>
             )}
-            
+
             {searchParams?.message && (
               <div className="p-3 rounded-lg bg-green-50 text-green-600 text-sm">
                 {searchParams.message}
