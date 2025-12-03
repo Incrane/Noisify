@@ -97,7 +97,7 @@ export default async function Home() {
 
   // Fetch upcoming public activities (limit 9)
   let activityQuery = supabase
-    .from("activity_dashboard")
+    .from("v_explore_activities")
     .select("*")
     .eq("visibility", "PUBLIC")
     .eq("activity_status", "PUBLISHED")

@@ -47,7 +47,7 @@ export default async function PublicActivitiesPage({
 
   // Start building query
   let dbQuery = supabase
-    .from("activity_dashboard")
+    .from("v_explore_activities")
     .select("*")
     .eq("activity_status", "PUBLISHED")
     .gte("start_datum_tid", new Date().toISOString()) // Only upcoming activities
