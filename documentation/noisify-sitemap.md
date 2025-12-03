@@ -20,7 +20,7 @@
 The landing page (`/`) is the **primary entry point** for most members and must:
 - ✅ Display public activities (readable but not registerable)
 - ✅ Showcase all organizations
-- ✅ Preview courses (future)
+- ✅ Preview courses (future) (readable but not registerable)
 - ✅ Include organization onboarding section
 - ✅ Clear CTAs: "Logga in" and "Skapa konto"
 - ✅ Activity registration requires login with message: **"Logga in eller skapa konto för att anmäla sig"** (or shorter alternative)
@@ -334,15 +334,6 @@ The landing page (`/`) is the **primary entry point** for most members and must:
 │   ├── Tab: Pågår (Active)
 │   ├── Tab: Avslutade (Past)
 │   └── Tab: Inbjudningar (Invitations with badge)
-│
-├── /app/quiz (Live Quiz)
-│   ├── PIN-code entry with numpad
-│   ├── Nickname selection
-│   └── /app/quiz/play/:sessionId (Game View)
-│       ├── Waiting for host screen
-│       ├── Answer buttons (Red/Blue/Yellow/Green)
-│       ├── Score and streak display
-│       └── Results feedback
 │
 └── /app/profil (My Profile)
     ├── Edit alias

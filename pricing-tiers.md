@@ -13,25 +13,44 @@ The pricing model is designed to allow small youth centers to get started easily
 **Cost:** 0 SEK / month
 
 **Allowed:**
-- **Members:** Up to 30 active members.
+- **Members:** Up to 50 active members.
 - **Staff:** Up to 3 staff accounts (Role 1 & 2).
 - **Activities:** Unlimited creation of activities.
 - **Storage:** 500 MB for images/media.
 - **Basic Reporting:** View simple attendance lists.
 - **Support:** Community support / Documentation only.
 
+**Create activities limitations:** 
+- Anmälningsregler must be "Öppen för alla", "Endast medlemmar" och "Endast inbjudna" are blocked.
+- Inga reserveringar kan skapas.
+- Inga anmälningslappar kan skapas.
+- Inga återkommande anmälningar kan skapas.
+- Inga samarbete med andra organisationer kan skapas.
+- Inga sista anmälningsdatum kan skapas.
+
+**Courses limitations:**
+- Max 2 kurser kan skapas.
+- Behörighet måste vara "Öppen för alla", "Endast medlemmar" och "välj medlemmar" är blockerade.
+
+**Rumsbokningar**
+- Allt är tillgängligt.
+
+**Chatt**
+- Kan ej skapa grupper.
+- Kan endast chatta med medlemmar.
+
 **Not Allowed:**
 - **Multiple Organizations:** Cannot create or manage more than 1 organization.
 - **Advanced Roles:** No access to Role 3+ (Senior Staff/Admin features).
-- **Custom Branding:** No custom logo on public pages (shows Noisify branding).
 - **Export Data:** Cannot export member lists to Excel/CSV.
 - **SMS Notifications:** No SMS integration for urgent alerts.
+- **SLA:** No guaranteed uptime SLA.
 
 ---
 
 ### 2.2 Pro Tier ("Växa")
 **Target:** Established youth centers with moderate traffic.
-**Cost:** [Price TBD] SEK / month
+**Cost:** 2000 SEK / month (ex moms) per organization.
 
 **Allowed:**
 - **Members:** Unlimited active members.
@@ -39,12 +58,8 @@ The pricing model is designed to allow small youth centers to get started easily
 - **Activities:** Unlimited.
 - **Storage:** 10 GB for images/video.
 - **Advanced Reporting:** Export data, detailed statistics on attendance and demographics.
-- **Custom Branding:** Upload organization logo, remove "Powered by Noisify" prominence.
-- **Priority Support:** Email support with 24h response time.
+- **Priority Support:** Email support with 48h response time.
 - **Waitlist Management:** Automated waitlist promotion rules.
-
-**Not Allowed:**
-- **Multi-tenant Management:** Still limited to single organization management (unless purchased as add-on).
 - **SLA:** No guaranteed uptime SLA.
 
 ---
