@@ -39,6 +39,7 @@ interface Activity {
   plats: string | null;
   kapacitetsstatus: string;
   lediga_platser: number | null;
+  hide_address?: boolean;
 }
 
 interface Organisation {
@@ -98,26 +99,31 @@ export default async function Home() {
   // Fetch upcoming public activities (limit 9)
   let activityQuery = supabase
     .from("v_explore_activities")
-    .select("*")
+    .select("activity_id, slug, aktivitet:activity_name, agande_organisation:organization_name, image_url, start_datum_tid:starts_at, start_tid:start_time, slut_tid:end_time, plats:address, kapacitetsstatus:capacity_status, lediga_platser:available_spots, hide_address")
     .eq("visibility", "PUBLIC")
     .eq("activity_status", "PUBLISHED")
-    .gte("start_datum_tid", new Date().toISOString())
-    .order("start_datum_tid", { ascending: true })
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true })
     .limit(9);
 
   if (cityId) {
     if (orgIds.length > 0) {
-      activityQuery = activityQuery.in("agande_org_id", orgIds);
+      activityQuery = activityQuery.in("organization_id", orgIds);
     } else {
       // If city is selected but no organizations found, we shouldn't fetch any activities
       // We can simulate an empty result by filtering on a non-existent ID or just not running the query
       // Simplest is to filter by impossible ID
-      activityQuery = activityQuery.eq("agande_org_id", "00000000-0000-0000-0000-000000000000");
+      activityQuery = activityQuery.eq("organization_id", "00000000-0000-0000-0000-000000000000");
     }
   }
 
   const { data: activitiesData, error: actError } = await activityQuery;
-  if (actError) console.error("Error fetching activities:", actError);
+
+  if (actError) {
+    console.error("Error fetching activities:", JSON.stringify(actError, null, 2));
+  } else if (!activitiesData || activitiesData.length === 0) {
+    console.log("No activities found for query:", { cityId, orgIdsCount: orgIds.length });
+  }
   const activities = activitiesData as unknown as Activity[] | null;
 
   return (
@@ -228,13 +234,21 @@ export default async function Home() {
 
             <div className="grid md:grid-cols-3 gap-8">
               {activities && activities.length > 0 ? (
-                activities.map((activity) => (
-                  <ActivityCard
-                    key={activity.activity_id}
-                    activity={activity}
-                    hideFavorite={!user}
-                  />
-                ))
+                activities.map((activity) => {
+                  // Redact address if hidden
+                  const displayActivity = {
+                    ...activity,
+                    plats: activity.hide_address ? null : activity.plats
+                  };
+
+                  return (
+                    <ActivityCard
+                      key={activity.activity_id}
+                      activity={displayActivity}
+                      hideFavorite={!user}
+                    />
+                  );
+                })
               ) : (
                 <div className="col-span-full text-center py-12 bg-white rounded-2xl border border-dashed border-slate-200">
                   <p className="text-slate-500">Inga kommande aktiviteter just nu{cityName ? ` i ${cityName}` : ''}.</p>

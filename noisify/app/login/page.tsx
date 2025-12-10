@@ -7,7 +7,13 @@ export default async function LoginPage(props: {
   searchParams: Promise<{ message?: string; error?: string }>
 }) {
   const searchParams = await props.searchParams
-  const { cities, cityName, savedCities } = await getLayoutData()
+  let layoutData: any = { cities: [], cityName: undefined, savedCities: [] };
+  try {
+    layoutData = await getLayoutData()
+  } catch (error) {
+    console.error("Error in getLayoutData:", error);
+  }
+  const { cities, cityName, savedCities } = layoutData;
 
   return (
     <div className="min-h-screen bg-slate-50">

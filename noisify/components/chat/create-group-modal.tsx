@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { useChat } from './chat-provider';
+import { useChat } from './chat-context';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';

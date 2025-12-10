@@ -3,6 +3,7 @@
 import { createClient, createAdminClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { getSelectedOrganization } from "../actions";
 
 async function checkOrgStatus(orgId: string, supabase: any) {
     const { data: org } = await supabase
@@ -424,4 +425,42 @@ export async function createPerk(orgId: string, title: string) {
         id: data.id,
         title: data.name // Map name back to title for frontend compatibility if we don't change frontend yet
     };
+}
+
+export async function uploadRoomCover(formData: FormData) {
+    const supabase = await createClient();
+    const orgId = await getSelectedOrganization();
+
+    if (!orgId) return { error: "Ingen organisation vald" };
+
+    const file = formData.get("file") as File;
+    if (!file) return { error: "Ingen fil vald" };
+
+    // Validate file type
+    if (!file.type.startsWith("image/")) {
+        return { error: "Endast bilder är tillåtna (JPG, PNG, WEBP)" };
+    }
+
+    // Validate file size (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+        return { error: "Filen är för stor. Maxstorlek är 5MB." };
+    }
+
+    const fileExt = file.name.split(".").pop();
+    const fileName = `room-cover_${orgId}_${Date.now()}.${fileExt}`;
+    const filePath = `room-covers/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+        .from("public_images")
+        .upload(filePath, file);
+
+    if (uploadError) {
+        return { error: "Kunde inte ladda upp omslagsbild: " + uploadError.message };
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+        .from("public_images")
+        .getPublicUrl(filePath);
+
+    return { success: true, url: publicUrl };
 }

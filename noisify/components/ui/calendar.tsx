@@ -3,6 +3,7 @@
 import * as React from "react"
 import { ChevronLeft, ChevronRight } from "lucide-react"
 import { DayPicker } from "react-day-picker"
+import { format } from "date-fns"
 import { sv } from "date-fns/locale"
 
 import { cn } from "@/lib/utils"
@@ -21,15 +22,27 @@ function Calendar({
             locale={sv}
             showOutsideDays={showOutsideDays}
             className={cn("p-3", className)}
+            captionLayout="dropdown-buttons"
+            fromYear={1900}
+            toYear={new Date().getFullYear() + 10}
+            formatters={{
+                formatMonthCaption: (date, options) => {
+                    return format(date, "MMM", { locale: options?.locale })
+                }
+            }}
             classNames={{
                 months: "flex flex-col sm:flex-row space-y-4 sm:space-x-4 sm:space-y-0",
                 month: "space-y-4",
                 caption: "flex justify-center pt-1 relative items-center",
-                caption_label: "text-sm font-medium",
+                caption_label: "hidden",
+                caption_dropdowns: "flex justify-center gap-2 items-center",
+                dropdown: "bg-background border border-slate-200 rounded-md px-2 py-1 text-sm font-medium hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer shadow-sm",
+                dropdown_month: "ml-0",
+                dropdown_year: "ml-0",
                 nav: "space-x-1 flex items-center",
                 nav_button: cn(
                     buttonVariants({ variant: "outline" }),
-                    "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100"
+                    "h-7 w-7 bg-transparent p-0 opacity-50 hover:opacity-100 hover:bg-slate-100 border-slate-200"
                 ),
                 nav_button_previous: "absolute left-1",
                 nav_button_next: "absolute right-1",
@@ -41,11 +54,11 @@ function Calendar({
                 cell: "h-9 w-9 text-center text-sm p-0 relative [&:has([aria-selected].day-range-end)]:rounded-r-md [&:has([aria-selected].day-outside)]:bg-slate-100/50 [&:has([aria-selected])]:bg-slate-100 first:[&:has([aria-selected])]:rounded-l-md last:[&:has([aria-selected])]:rounded-r-md focus-within:relative focus-within:z-20",
                 day: cn(
                     buttonVariants({ variant: "ghost" }),
-                    "h-9 w-9 p-0 font-normal aria-selected:opacity-100"
+                    "h-9 w-9 p-0 font-normal aria-selected:opacity-100 hover:bg-slate-100"
                 ),
                 day_range_end: "day-range-end",
                 day_selected:
-                    "bg-indigo-600 text-white hover:bg-indigo-600 hover:text-white focus:bg-indigo-600 focus:text-white",
+                    "bg-indigo-600 text-white hover:bg-indigo-600 hover:text-white focus:bg-indigo-600 focus:text-white rounded-md",
                 day_today: "bg-slate-100 text-slate-900",
                 day_outside:
                     "day-outside text-slate-500 opacity-50 aria-selected:bg-slate-100/50 aria-selected:text-slate-500 aria-selected:opacity-30",
@@ -53,6 +66,7 @@ function Calendar({
                 day_range_middle:
                     "aria-selected:bg-slate-100 aria-selected:text-slate-900",
                 day_hidden: "invisible",
+                vhidden: "sr-only",
                 ...classNames,
             }}
             components={{

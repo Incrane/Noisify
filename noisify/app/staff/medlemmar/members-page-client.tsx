@@ -4,7 +4,7 @@ import { useState, useTransition } from 'react';
 import NewMemberModal from './new-member-modal';
 import MemberDetailsModal from '@/components/staff/member-details-modal';
 import MembersListHeader from './members-list-header';
-import { Calendar, Info, Users as UsersIcon, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Calendar, Info, Users as UsersIcon, CheckCircle, XCircle, Loader2, ShieldCheck, Shield } from 'lucide-react';
 import { updateMemberStatus } from './actions';
 import { toast } from 'sonner';
 
@@ -18,6 +18,14 @@ interface Member {
   endDate: string | null;
   isLocal: boolean;
   birthYear: number | null;
+  first_name?: string | null;
+  last_name?: string | null;
+  email?: string | null;
+  phone_number?: string | null;
+  verk_id_nummer?: string | null;
+  notes?: string | null;
+  birth_date?: string | null;
+  isVerified?: boolean;
 }
 
 interface MembersPageClientProps {
@@ -65,9 +73,21 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
               <tr key={member.id} className="hover:bg-slate-50 transition-colors group">
                 <td className="px-6 py-4">
                   <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm
-                      ${member.isLocal ? 'bg-amber-500' : 'bg-indigo-500'}`}>
-                      {member.alias.charAt(0).toUpperCase()}
+                    <div className="relative">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm
+                        ${member.isLocal ? 'bg-amber-500' : 'bg-indigo-500'}`}>
+                        {member.alias.charAt(0).toUpperCase()}
+                      </div>
+                      {/* Verified Badge */}
+                      {member.isVerified ? (
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5" title="Verifierad profil">
+                          <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                        </div>
+                      ) : (
+                        <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5" title="Overifierad profil">
+                          <Shield className="w-4 h-4 text-slate-400" />
+                        </div>
+                      )}
                     </div>
                     <div>
                       <div className="font-medium text-slate-900">{member.alias}</div>
@@ -80,15 +100,14 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                     ${member.status === 'active'
                       ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                       : member.status === 'pending'
-                      ? 'bg-amber-50 text-amber-700 border-amber-100'
-                      : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                    <div className={`w-1.5 h-1.5 rounded-full ${
-                      member.status === 'active' ? 'bg-emerald-500' 
+                        ? 'bg-amber-50 text-amber-700 border-amber-100'
+                        : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                    <div className={`w-1.5 h-1.5 rounded-full ${member.status === 'active' ? 'bg-emerald-500'
                       : member.status === 'pending' ? 'bg-amber-500'
-                      : 'bg-slate-400'}`} />
-                    {member.status === 'active' ? 'Aktiv' 
-                     : member.status === 'pending' ? 'Väntar svar'
-                     : 'Inaktiv'}
+                        : 'bg-slate-400'}`} />
+                    {member.status === 'active' ? 'Aktiv'
+                      : member.status === 'pending' ? 'Väntar svar'
+                        : 'Inaktiv'}
                   </span>
                 </td>
                 <td className="px-6 py-4 text-slate-600">
@@ -113,7 +132,7 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                   <div className="flex items-center justify-end gap-2">
                     {member.status === 'pending' && (
                       <>
-                        <button 
+                        <button
                           onClick={() => handleStatusUpdate(member.id, 'active')}
                           disabled={isPending}
                           className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
@@ -125,7 +144,7 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                             <CheckCircle className="w-5 h-5" />
                           )}
                         </button>
-                        <button 
+                        <button
                           onClick={() => handleStatusUpdate(member.id, 'rejected')}
                           disabled={isPending}
                           className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
@@ -135,7 +154,7 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                         </button>
                       </>
                     )}
-                    <MemberDetailsModal member={member}>
+                    <MemberDetailsModal member={member} orgId={orgId}>
                       <button className="text-slate-400 hover:text-indigo-600 transition-colors p-1.5 hover:bg-slate-100 rounded-full">
                         <Info className="w-4 h-4" />
                       </button>
@@ -164,9 +183,21 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
             <div key={member.id} className="p-4 space-y-3">
               <div className="flex justify-between items-start">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm
-                                ${member.isLocal ? 'bg-amber-500' : 'bg-indigo-500'}`}>
-                    {member.alias.charAt(0).toUpperCase()}
+                  <div className="relative">
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white font-bold text-sm
+                                  ${member.isLocal ? 'bg-amber-500' : 'bg-indigo-500'}`}>
+                      {member.alias.charAt(0).toUpperCase()}
+                    </div>
+                    {/* Verified Badge - Mobile */}
+                    {member.isVerified ? (
+                      <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5" title="Verifierad profil">
+                        <ShieldCheck className="w-4 h-4 text-indigo-600" />
+                      </div>
+                    ) : (
+                      <div className="absolute -bottom-0.5 -right-0.5 bg-white rounded-full p-0.5" title="Overifierad profil">
+                        <Shield className="w-4 h-4 text-slate-400" />
+                      </div>
+                    )}
                   </div>
                   <div>
                     <div className="font-medium text-slate-900">{member.alias}</div>
@@ -174,29 +205,29 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                   </div>
                 </div>
                 <div className="flex items-center gap-1">
-                   {member.status === 'pending' && (
-                      <>
-                        <button 
-                          onClick={() => handleStatusUpdate(member.id, 'active')}
-                          disabled={isPending}
-                          className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
-                        >
-                           {isPending && pendingId === member.id ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                          ) : (
-                            <CheckCircle className="w-5 h-5" />
-                          )}
-                        </button>
-                        <button 
-                          onClick={() => handleStatusUpdate(member.id, 'rejected')}
-                          disabled={isPending}
-                          className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
-                        >
-                          <XCircle className="w-5 h-5" />
-                        </button>
-                      </>
-                    )}
-                  <MemberDetailsModal member={member}>
+                  {member.status === 'pending' && (
+                    <>
+                      <button
+                        onClick={() => handleStatusUpdate(member.id, 'active')}
+                        disabled={isPending}
+                        className="text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
+                      >
+                        {isPending && pendingId === member.id ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <CheckCircle className="w-5 h-5" />
+                        )}
+                      </button>
+                      <button
+                        onClick={() => handleStatusUpdate(member.id, 'rejected')}
+                        disabled={isPending}
+                        className="text-red-600 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-full transition-colors disabled:opacity-50"
+                      >
+                        <XCircle className="w-5 h-5" />
+                      </button>
+                    </>
+                  )}
+                  <MemberDetailsModal member={member} orgId={orgId}>
                     <button className="text-slate-400 hover:text-indigo-600 transition-colors p-1">
                       <Info className="w-5 h-5" />
                     </button>
@@ -209,15 +240,14 @@ export default function MembersPageClient({ members, orgId, filter }: MembersPag
                             ${member.status === 'active'
                     ? 'bg-emerald-50 text-emerald-700 border-emerald-100'
                     : member.status === 'pending'
-                    ? 'bg-amber-50 text-amber-700 border-amber-100'
-                    : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    member.status === 'active' ? 'bg-emerald-500' 
+                      ? 'bg-amber-50 text-amber-700 border-amber-100'
+                      : 'bg-slate-100 text-slate-600 border-slate-200'}`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${member.status === 'active' ? 'bg-emerald-500'
                     : member.status === 'pending' ? 'bg-amber-500'
-                    : 'bg-slate-400'}`} />
-                  {member.status === 'active' ? 'Aktiv' 
-                   : member.status === 'pending' ? 'Väntar svar'
-                   : 'Inaktiv'}
+                      : 'bg-slate-400'}`} />
+                  {member.status === 'active' ? 'Aktiv'
+                    : member.status === 'pending' ? 'Väntar svar'
+                      : 'Inaktiv'}
                 </span>
 
                 <span className={`px-2.5 py-1 rounded-lg text-xs font-medium

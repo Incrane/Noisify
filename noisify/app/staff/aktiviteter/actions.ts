@@ -341,9 +341,38 @@ export async function createActivity(formData: FormData) {
   const contactPersons = formData.getAll('contact_persons') as string[];
   const createdBy = contactPersons.length > 0 ? contactPersons[0] : profile.id;
 
+  const { data: orgData, error: orgError } = await supabase
+    .from('organizations')
+    .select('city_id')
+    .eq('id', orgId)
+    .single();
+
+  if (orgError || !orgData) {
+    console.error('Error fetching organization city:', orgError);
+    // Fallback or error? For now, let's proceed but log it. Ideally should be required.
+  }
+
+  const cityId = orgData?.city_id;
+
+  // Generate UUID and Slug
+  const newActivityId = crypto.randomUUID();
+  const slugSuffix = newActivityId.substring(0, 8);
+
+  const slug = name.toLowerCase()
+    .replace(/å/g, 'a')
+    .replace(/ä/g, 'a')
+    .replace(/ö/g, 'o')
+    .replace(/[^\w\s-]/g, '')
+    .replace(/\s+/g, '-')
+    .replace(/--+/g, '-')
+    .trim() + '-' + slugSuffix;
+
   // Insert first to get ID for file path
   const { data: newActivity, error } = await supabase.from('activity').insert({
+    id: newActivityId,
     owner_org_id: orgId,
+    city_id: cityId,
+    slug: slug,
     name,
     description,
     starts_at: startsAt,

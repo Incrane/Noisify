@@ -11,6 +11,7 @@ interface Activity {
   start_tid: string;
   slut_tid: string;
   plats: string | null;
+  hide_address: boolean | null;
 }
 
 interface ActivityListRowProps {
@@ -51,6 +52,8 @@ export default function ActivityListRow({ activity, registrationStatus, href }: 
   });
   // Capitalize first letter of date
   const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+
+  const showAddress = !activity.hide_address || registrationStatus === 'ACCEPTED';
 
   return (
     <Link
@@ -101,12 +104,12 @@ export default function ActivityListRow({ activity, registrationStatus, href }: 
               <span className="truncate text-slate-500">{activity.agande_organisation}</span>
             </div>
 
-            {activity.plats && (
-              <div className="flex items-center gap-2 sm:col-span-2">
-                <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <span className="truncate text-slate-500">{activity.plats}</span>
-              </div>
-            )}
+            <div className="flex items-center gap-2 sm:col-span-2">
+              <MapPin className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+              <span className="truncate text-slate-500">
+                {showAddress ? (activity.plats || 'Ingen plats angiven') : 'Platsinformation dold'}
+              </span>
+            </div>
           </div>
         </div>
 

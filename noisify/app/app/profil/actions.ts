@@ -203,3 +203,72 @@ export async function removeFavorite(type: FavoriteType, id: string) {
   revalidatePath("/app/aktiviteter");
   revalidatePath("/app/profil/favoriter");
 }
+
+/**
+ * Update alias after being forced to change it by staff
+ * This validates the new alias, updates the profile, and clears the requires_alias_change flag
+ */
+export async function updateAliasAfterForce(profileId: string, newAlias: string) {
+  const supabase = await createClient();
+
+  const { data: { user } } = await supabase.auth.getUser();
+  if (!user) {
+    return { error: 'Ej autentiserad' };
+  }
+
+  // Verify the user owns this profile
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('id, user_id')
+    .eq('id', profileId)
+    .single();
+
+  if (!profile || profile.user_id !== user.id) {
+    return { error: 'Ogiltig profil' };
+  }
+
+  // Validate alias length
+  if (newAlias.length < 3 || newAlias.length > 50) {
+    return { error: 'Alias måste vara mellan 3 och 50 tecken' };
+  }
+
+  // Check if alias is banned
+  const { data: bannedAlias } = await supabase
+    .from('blocked_alias')
+    .select('id')
+    .ilike('alias', newAlias)
+    .single();
+
+  if (bannedAlias) {
+    return { error: 'Detta alias är inte tillgängligt' };
+  }
+
+  // Check if alias is taken by another user
+  const { data: existingAlias } = await supabase
+    .from('profiles')
+    .select('id')
+    .ilike('alias', newAlias)
+    .neq('id', profileId)
+    .single();
+
+  if (existingAlias) {
+    return { error: 'Detta alias används redan av någon annan' };
+  }
+
+  // Update the profile with new alias and clear the requires_alias_change flag
+  const { error: updateError } = await supabase
+    .from('profiles')
+    .update({
+      alias: newAlias,
+      requires_alias_change: false
+    })
+    .eq('id', profileId);
+
+  if (updateError) {
+    console.error('Error updating alias:', updateError);
+    return { error: 'Kunde inte uppdatera alias' };
+  }
+
+  revalidatePath('/app');
+  return { success: true };
+}

@@ -14,6 +14,9 @@ export type ChatParticipant = {
     role: 'admin' | 'member';
     joined_at: string;
     is_blocked: boolean;
+    membership?: {
+        muted_until: string | null;
+    };
 };
 
 export type ChatMessage = {
@@ -29,7 +32,17 @@ export type ChatGroupWithParticipants = ChatGroup & {
         profile: {
             alias: string | null;
             image_url: string | null;
+            email?: string | null;
+        };
+        membership?: {
+            muted_until: string | null;
         };
     })[];
+    messages?: {
+        created_at: string;
+        content: string;
+        sender_id: string;
+    }[];
+    unreadCount?: number;
     last_message?: ChatMessage;
 };

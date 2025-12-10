@@ -15,6 +15,7 @@ interface Activity {
   plats: string | null;
   kapacitetsstatus: string;
   lediga_platser: number | null;
+  hide_address?: boolean;
 }
 
 interface ActivityCardProps {
@@ -50,23 +51,22 @@ export default function ActivityCard({ activity, registrationStatus, isFavorite 
             {registrationStatus && (
               <span
                 className={`px-2 py-1 text-xs font-medium rounded-full shadow-sm
-                  ${
-                    registrationStatus === "ACCEPTED"
-                      ? "bg-green-100 text-green-700"
-                      : registrationStatus === "PENDING"
+                  ${registrationStatus === "ACCEPTED"
+                    ? "bg-green-100 text-green-700"
+                    : registrationStatus === "PENDING"
                       ? "bg-yellow-100 text-yellow-700"
                       : registrationStatus === "WAITLISTED"
-                      ? "bg-orange-100 text-orange-700"
-                      : "bg-slate-100 text-slate-700"
+                        ? "bg-orange-100 text-orange-700"
+                        : "bg-slate-100 text-slate-700"
                   }`}
               >
                 {registrationStatus === "ACCEPTED"
                   ? "Anmäld"
                   : registrationStatus === "PENDING"
-                  ? "Väntar svar"
-                  : registrationStatus === "WAITLISTED"
-                  ? "Reservplats"
-                  : registrationStatus}
+                    ? "Väntar svar"
+                    : registrationStatus === "WAITLISTED"
+                      ? "Reservplats"
+                      : registrationStatus}
               </span>
             )}
           </div>
@@ -106,7 +106,7 @@ export default function ActivityCard({ activity, registrationStatus, isFavorite 
               </span>
             </div>
 
-            {activity.plats && (
+            {activity.plats && !activity.hide_address && (
               <div className="flex items-center gap-2">
                 <MapPin className="w-4 h-4 text-slate-400" />
                 <span className="truncate">{activity.plats}</span>

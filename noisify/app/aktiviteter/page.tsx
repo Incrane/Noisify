@@ -46,38 +46,39 @@ export default async function PublicActivitiesPage({
   const { data: { user } } = await supabase.auth.getUser();
 
   // Start building query
+  // Start building query
   let dbQuery = supabase
     .from("v_explore_activities")
-    .select("*")
+    .select("activity_id, slug, aktivitet:activity_name, agande_organisation:organization_name, image_url, start_datum_tid:starts_at, start_tid:start_time, slut_tid:end_time, plats:address, kapacitetsstatus:capacity_status, lediga_platser:available_spots, hide_address")
     .eq("activity_status", "PUBLISHED")
-    .gte("start_datum_tid", new Date().toISOString()) // Only upcoming activities
-    .order("start_datum_tid", { ascending: true });
+    .gte("starts_at", new Date().toISOString()) // Only upcoming activities
+    .order("starts_at", { ascending: true });
 
   if (cityId) {
     const { data: orgs } = await supabase.from("organizations").select("id").eq("city_id", cityId);
     const orgIds = orgs?.map(o => o.id) || [];
 
     if (orgIds.length > 0) {
-      dbQuery = dbQuery.in("agande_org_id", orgIds);
+      dbQuery = dbQuery.in("organization_id", orgIds);
     } else {
-      dbQuery = dbQuery.eq("agande_org_id", "00000000-0000-0000-0000-000000000000");
+      dbQuery = dbQuery.eq("organization_id", "00000000-0000-0000-0000-000000000000");
     }
   }
 
   if (query) {
-    dbQuery = dbQuery.ilike("aktivitet", `%${query}%`);
+    dbQuery = dbQuery.ilike("activity_name", `%${query}%`);
   }
 
   if (date) {
     // Filter by start date matching the selected date (ignoring time)
-    // Assuming start_datum_tid is timestamp
+    // Assuming starts_at is timestamp
     dbQuery = dbQuery
-      .gte("start_datum_tid", `${date}T00:00:00`)
-      .lte("start_datum_tid", `${date}T23:59:59`);
+      .gte("starts_at", `${date}T00:00:00`)
+      .lte("starts_at", `${date}T23:59:59`);
   }
 
   if (category) {
-    dbQuery = dbQuery.contains('categories_json', JSON.stringify([{ cat_name: category }]));
+    dbQuery = dbQuery.contains('categories', JSON.stringify([{ name: category }]));
   }
 
   const { data: activities, error } = await dbQuery;
@@ -113,13 +114,21 @@ export default async function PublicActivitiesPage({
         </div>
 
         <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {activities?.map((activity) => (
-            <ActivityCard
-              key={activity.activity_id}
-              activity={activity}
-              hideFavorite={!user}
-            />
-          ))}
+          {activities?.map((activity) => {
+            // Redact address if hidden
+            const displayActivity = {
+              ...activity,
+              plats: activity.hide_address ? null : activity.plats
+            };
+
+            return (
+              <ActivityCard
+                key={activity.activity_id}
+                activity={displayActivity}
+                hideFavorite={!user}
+              />
+            );
+          })}
 
           {activities?.length === 0 && (
             <div className="col-span-full text-center py-12 text-slate-500">

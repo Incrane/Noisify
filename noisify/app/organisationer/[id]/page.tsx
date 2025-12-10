@@ -3,7 +3,7 @@ import SiteHeader from "@/components/landing/site-header";
 import SiteFooter from "@/components/site-footer";
 import Image from "next/image";
 import Link from "next/link";
-import { MapPin, Mail, ArrowLeft } from "lucide-react";
+import { MapPin, Mail, ArrowLeft, BookOpen, Clock, Users } from "lucide-react";
 import ActivityCard from "@/components/activity-card";
 import { getLayoutData } from "@/lib/get-layout-data";
 import { Metadata } from "next";
@@ -88,11 +88,20 @@ export default async function OrganizationDetailPage({
 
   // 2. Get Organization's Activities
   const { data: activities } = await supabase
-    .from("activity_dashboard")
-    .select("*")
+    .from("v_explore_activities")
+    .select("activity_id, slug, aktivitet:activity_name, agande_organisation:organization_name, image_url, start_datum_tid:starts_at, start_tid:start_time, slut_tid:end_time, plats:address, kapacitetsstatus:capacity_status, lediga_platser:available_spots, hide_address")
     .eq("activity_status", "PUBLISHED")
+    .eq("organization_id", org.org_id)
+    .gte("starts_at", new Date().toISOString())
+    .order("starts_at", { ascending: true });
+
+  // 3. Get Organization's Courses
+  const { data: courses } = await supabase
+    .from("course_dashboard")
+    .select("*")
+    .eq("status", "PUBLISHED")
     .eq("agande_org_id", org.org_id)
-    .order("start_datum_tid", { ascending: true });
+    .order("skapad_datum", { ascending: false });
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -125,7 +134,18 @@ export default async function OrganizationDetailPage({
             </div>
 
             <div className="mt-16 md:mt-20">
-              <h1 className="text-3xl font-bold text-slate-900 mb-2">{org.name}</h1>
+              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-2">
+                <h1 className="text-3xl font-bold text-slate-900">{org.name}</h1>
+                {user && (
+                  <Link
+                    href={`/app/chatt?orgId=${org.org_id}`}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg font-medium hover:bg-indigo-700 transition-colors shadow-sm"
+                  >
+                    <Mail className="w-4 h-4" />
+                    Ställ fråga
+                  </Link>
+                )}
+              </div>
               {org.address && (
                 <div className="flex items-center gap-1 text-slate-500 mb-6">
                   <MapPin className="w-4 h-4" /> {org.address}
@@ -172,6 +192,56 @@ export default async function OrganizationDetailPage({
             <p className="text-slate-500 italic col-span-full">Inga publicerade aktiviteter just nu.</p>
           )}
         </div>
+
+        {/* Courses Section */}
+        {courses && courses.length > 0 && (
+          <div className="mt-16">
+            <h2 className="text-2xl font-bold text-slate-900 mb-6">Våra kurser</h2>
+            <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses.map((course) => (
+                <Link
+                  key={course.course_id}
+                  href={`/kurser/${course.course_id}`}
+                  className="group block bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden hover:shadow-md transition-all hover:border-indigo-200"
+                >
+                  <div className="relative h-48 bg-slate-100">
+                    {course.image_url ? (
+                      <Image
+                        src={course.image_url}
+                        alt={course.kursnamn}
+                        fill
+                        className="object-cover group-hover:scale-105 transition-transform duration-300"
+                      />
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-slate-300">
+                        <BookOpen className="w-12 h-12" />
+                      </div>
+                    )}
+                  </div>
+                  <div className="p-5 space-y-4">
+                    <div>
+                      <h3 className="font-bold text-lg text-slate-900 group-hover:text-indigo-600 transition-colors mb-1 line-clamp-1">
+                        {course.kursnamn}
+                      </h3>
+                      <p className="text-sm text-slate-500">{course.agande_organisation}</p>
+                    </div>
+
+                    <div className="flex items-center gap-4 text-sm text-slate-600">
+                      <div className="flex items-center gap-1.5">
+                        <Clock className="w-4 h-4 text-slate-400" />
+                        <span>{course.langd_timmar ? `${course.langd_timmar}h` : '-'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Users className="w-4 h-4 text-slate-400" />
+                        <span>{course.antal_inskrivna || 0} deltagare</span>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </main>
 
       <SiteFooter />

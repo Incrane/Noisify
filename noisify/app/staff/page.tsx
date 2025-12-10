@@ -61,7 +61,7 @@ export default async function StaffDashboardPage() {
         (
           await supabase
             .from("activity")
-            .select("activity_id")
+            .select("activity_id:id")
             .in("owner_org_id", orgIds)
         ).data?.map((a) => a.activity_id) || []
       ),
@@ -76,15 +76,15 @@ export default async function StaffDashboardPage() {
 
     // 3. Total Members
     supabase
-      .from("org_user")
+      .from("memberships")
       .select("*", { count: "exact", head: true })
       .in("org_id", orgIds)
-      .eq("role_id", 0), // 0 = Member
+      .eq("membership_state", "active"),
 
     // 4. Today's Activities
     supabase
       .from("activity")
-      .select("activity_id, name, starts_at, ends_at, location, room_id")
+      .select("activity_id:id, name, starts_at, ends_at, location, room_id")
       .in("owner_org_id", orgIds)
       .gte("starts_at", todayStart.toISOString())
       .lte("starts_at", todayEnd.toISOString())
@@ -115,11 +115,22 @@ export default async function StaffDashboardPage() {
     // 6. Recent Activities (for list)
     supabase
       .from("activity")
-      .select("activity_id, name, starts_at, status, capacity")
+      .select("activity_id:id, name, starts_at, status, capacity")
       .in("owner_org_id", orgIds)
       .order("created_at", { ascending: false })
       .limit(5)
   ]);
+
+  // Debug logging
+  console.log("Staff Dashboard Debug:", {
+    profileId: profile.id,
+    orgIds,
+    pendingCount,
+    upcomingCount,
+    memberCount,
+    todaysActivitiesCount: todaysActivitiesRaw?.length,
+    todaysBookingsCount: todaysBookingsRaw?.length
+  });
 
   // Combine and sort today's events
   const todaysEvents = [

@@ -1,4 +1,5 @@
 import { createClient } from "@/utils/supabase/server";
+import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Calendar, Home, LogOut, User, Building2, MessageCircle } from "lucide-react";
@@ -6,10 +7,11 @@ import { signOut } from "@/app/login/actions";
 import NotificationsDropdown from "@/components/notifications-dropdown";
 import TopBar from "@/components/top-bar";
 import CompleteProfileModal from "@/components/profile/complete-profile-modal";
+import ForceAliasChangeModal from "@/components/profile/force-alias-change-modal";
 import { getAvatars } from "@/app/app/profil/completion-actions";
 import UnreadChatBadge from "@/components/unread-chat-badge";
-
 import UserDropdown from "@/components/user-dropdown";
+import MobileGreeting from "@/components/mobile-greeting";
 
 export default async function AppLayout({
   children,
@@ -29,9 +31,12 @@ export default async function AppLayout({
   // Fetch user profile to get alias and other public info
   const { data: profile } = await supabase
     .from('profiles')
-    .select('id, alias, city_id, target_subgroup, image_url')
+    .select('id, alias, city_id, target_subgroup, image_url, requires_alias_change')
     .eq('user_id', user.id)
     .maybeSingle();
+
+  // Check if user needs to change alias
+  const requiresAliasChange = profile?.requires_alias_change === true;
 
   // Fetch private user info
   const { data: privateInfo } = await supabase
@@ -91,6 +96,15 @@ export default async function AppLayout({
         />
       )}
 
+      {/* Force alias change modal - shown when staff requires user to change alias */}
+      {isProfileComplete && requiresAliasChange && profile && (
+        <ForceAliasChangeModal
+          isOpen={true}
+          currentAlias={profile.alias || ''}
+          profileId={profile.id}
+        />
+      )}
+
       {/* Desktop Sidebar */}
       <aside className="hidden md:flex w-64 flex-col bg-white border-r border-slate-200 h-screen sticky top-0">
         <div className="p-6 flex items-center gap-3 border-b border-slate-100">
@@ -139,7 +153,7 @@ export default async function AppLayout({
           <span className="font-bold text-xl tracking-tight text-slate-900">Noisify</span>
         </div>
         <div className="flex items-center gap-4">
-          <NotificationsDropdown />
+          <NotificationsDropdown userId={user.id} />
           <UserDropdown
             userEmail={user.email || ''}
             userAlias={profile?.alias}
@@ -149,16 +163,25 @@ export default async function AppLayout({
         </div>
       </header>
 
+
+
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-h-screen md:pt-24">
         <div className="hidden md:block">
-          <TopBar
-            userEmail={user.email || ''}
-            userAlias={profile?.alias}
-            userAvatar={profile?.image_url}
-            isStaff={isStaff}
-          />
+          <Suspense fallback={<div className="h-20 bg-white border-b border-slate-200" />}>
+            <TopBar
+              userEmail={user.email || ''}
+              userId={user.id}
+              userAlias={profile?.alias}
+              userAvatar={profile?.image_url}
+              isStaff={isStaff}
+            />
+          </Suspense>
         </div>
+
+        {/* Mobile Greeting & Search */}
+        <MobileGreeting alias={profile?.alias || 'Användare'} />
+
         <div className="flex-1 md:p-8 p-4 pb-24 md:pb-8 max-w-screen-2xl mx-auto w-full">
           {children}
         </div>

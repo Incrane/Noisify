@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import { createOrganization } from '@/actions/onboarding-actions'
 import { toast } from 'sonner'
 import { Loader2, ArrowLeft } from 'lucide-react'
+import Link from 'next/link'
 
 interface StepOrganizationProps {
     onComplete: () => void
@@ -79,12 +80,11 @@ export default function StepOrganization({ onComplete, onBack }: StepOrganizatio
 
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Kontakt E-post <span className="text-red-500">*</span>
+                        Kontakt E-post
                     </label>
                     <input
                         type="email"
                         name="contactEmail"
-                        required
                         placeholder="info@organisation.se"
                         className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
                     />
@@ -92,13 +92,25 @@ export default function StepOrganization({ onComplete, onBack }: StepOrganizatio
 
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
-                        Kontakt Telefon <span className="text-red-500">*</span>
+                        Kontakt Telefon
                     </label>
                     <input
                         type="tel"
                         name="contactPhone"
-                        required
                         placeholder="031-123 45 67"
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
+                    />
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Din verksamhetsroll <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                        type="text"
+                        name="role"
+                        required
+                        placeholder="Ex: Enhetschef"
                         className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
                     />
                 </div>
@@ -117,7 +129,7 @@ export default function StepOrganization({ onComplete, onBack }: StepOrganizatio
                         className="mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                     />
                     <label htmlFor="gdpr" className="text-sm text-slate-600">
-                        Jag accepterar terms and conditions
+                        Jag accepterar <Link href="/villkor" className="text-indigo-600 hover:underline" target="_blank">användarvillkoren</Link>
                     </label>
                 </div>
 

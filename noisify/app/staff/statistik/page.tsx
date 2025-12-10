@@ -39,9 +39,19 @@ export default async function StatisticsPage() {
     );
   }
 
+  // Pre-fetch activity IDs for registration queries (avoid nested async in Promise.all)
+  const { data: activityData } = await supabase
+    .from("activity")
+    .select("activity_id")
+    .in("org_id", orgIds);
+
+  const activityIds = activityData?.map(a => a.activity_id) || [];
+
   // Fetch Data
   const [
-    { count: totalMembers },
+    { count: digitalMembersActive },
+    { count: digitalMembersPending },
+    { count: localMembersCount },
     { count: totalActivities },
     { count: publishedActivities },
     { count: totalRegistrations },
@@ -51,54 +61,64 @@ export default async function StatisticsPage() {
     { count: activeCoursesCount },
     { data: popularActivities }
   ] = await Promise.all([
-    // 1. Total Members
+    // 1. Active Digital Members (from memberships table)
     supabase
-      .from("org_user")
+      .from("memberships")
       .select("*", { count: "exact", head: true })
       .in("org_id", orgIds)
-      .eq("role_id", 0),
+      .eq("membership_state", "active"),
 
-    // 2. Total Activities
+    // 2. Pending Digital Members (from memberships table)
+    supabase
+      .from("memberships")
+      .select("*", { count: "exact", head: true })
+      .in("org_id", orgIds)
+      .eq("membership_state", "pending"),
+
+    // 3. Local Members (from local_members table)
+    supabase
+      .from("local_members")
+      .select("*", { count: "exact", head: true })
+      .in("org_id", orgIds),
+
+    // 3. Total Activities
     supabase
       .from("activity")
       .select("*", { count: "exact", head: true })
       .in("org_id", orgIds),
 
-    // 3. Published Activities
+    // 4. Published Activities
     supabase
       .from("activity")
       .select("*", { count: "exact", head: true })
       .in("org_id", orgIds)
       .eq("status", "PUBLISHED"),
 
-    // 4. Total Registrations (across all owned activities)
-    supabase
-      .from("registration")
-      .select("*", { count: "exact", head: true })
-      .in(
-        "activity_id",
-        (await supabase.from("activity").select("activity_id").in("org_id", orgIds)).data?.map(a => a.activity_id) || []
-      ),
+    // 5. Total Registrations (across all owned activities)
+    activityIds.length > 0
+      ? supabase
+        .from("registration")
+        .select("*", { count: "exact", head: true })
+        .in("activity_id", activityIds)
+      : Promise.resolve({ count: 0 }),
 
     // 6. Waitlisted Registrations
-    supabase
-      .from("registration")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "WAITLISTED")
-      .in(
-        "activity_id",
-        (await supabase.from("activity").select("activity_id").in("org_id", orgIds)).data?.map(a => a.activity_id) || []
-      ),
+    activityIds.length > 0
+      ? supabase
+        .from("registration")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "WAITLISTED")
+        .in("activity_id", activityIds)
+      : Promise.resolve({ count: 0 }),
 
     // 7. Pending Registrations
-    supabase
-      .from("registration")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "PENDING")
-      .in(
-        "activity_id",
-        (await supabase.from("activity").select("activity_id").in("org_id", orgIds)).data?.map(a => a.activity_id) || []
-      ),
+    activityIds.length > 0
+      ? supabase
+        .from("registration")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "PENDING")
+        .in("activity_id", activityIds)
+      : Promise.resolve({ count: 0 }),
 
     // 8. Room Bookings
     supabase
@@ -118,10 +138,13 @@ export default async function StatisticsPage() {
     supabase
       .from("activity_dashboard")
       .select("activity_id, aktivitet, totala_anmalningar, datum, activity_status")
-      .in("agande_org_id", orgIds)
+      .in("owner_org_id", orgIds)
       .order("totala_anmalningar", { ascending: false })
       .limit(5)
   ]);
+
+  // Calculate total members (active digital + pending digital + local)
+  const totalMembers = (digitalMembersActive || 0) + (digitalMembersPending || 0) + (localMembersCount || 0);
 
   const kpiCards = [
     {
@@ -242,12 +265,12 @@ export default async function StatisticsPage() {
               <h2 className="font-bold text-slate-900 text-lg">Anmälningsstatus</h2>
             </div>
           </div>
-          
+
           <div className="p-6 space-y-6">
             <div className="space-y-2">
               <div className="flex justify-between text-sm font-medium">
                 <span className="text-slate-600">Fyllnadsgrad (Genomsnitt)</span>
-                <span className="text-slate-900">--%</span> 
+                <span className="text-slate-900">--%</span>
               </div>
               <div className="h-2 bg-slate-100 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-500 w-0 rounded-full" />
@@ -264,15 +287,15 @@ export default async function StatisticsPage() {
                 <span className="text-2xl font-bold text-slate-900">{waitlistedRegistrations || 0}</span>
                 <p className="text-xs text-slate-500">personer väntar på plats</p>
               </div>
-              
+
               <div className="p-4 rounded-xl bg-slate-50 border border-slate-100">
                 <div className="flex items-center gap-2 mb-2 text-indigo-600">
                   <BarChart3 className="w-4 h-4" />
                   <span className="text-xs font-bold uppercase">Snitt per aktivitet</span>
                 </div>
                 <span className="text-2xl font-bold text-slate-900">
-                  {totalActivities && totalActivities > 0 
-                    ? Math.round((totalRegistrations || 0) / totalActivities) 
+                  {totalActivities && totalActivities > 0
+                    ? Math.round((totalRegistrations || 0) / totalActivities)
                     : 0}
                 </span>
                 <p className="text-xs text-slate-500">deltagare</p>

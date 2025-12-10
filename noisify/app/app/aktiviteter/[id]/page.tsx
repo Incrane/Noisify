@@ -1,10 +1,12 @@
 import { createClient } from "@/utils/supabase/server";
-import { Calendar, Clock, MapPin, Users, ArrowLeft, CheckCircle } from "lucide-react";
+import { Calendar, Clock, MapPin, Users, ArrowLeft, CheckCircle, ShieldAlert } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
 import { registerForActivity, unregisterFromActivity } from "../actions";
 import { formatInTimeZone } from 'date-fns-tz';
 import { sv } from 'date-fns/locale';
+import MembershipButton from "@/components/membership/membership-button";
+import { getMembershipTypes } from "@/app/actions/membership";
 
 export default async function ActivityDetailPage(props: {
   params: Promise<{ id: string }>;
@@ -32,18 +34,41 @@ export default async function ActivityDetailPage(props: {
   }
 
   // Fetch extra details from activity table
+  // Fetch extra details from activity table
   const { data: activityDetails } = await supabase
     .from("activity")
-    .select("lottery_date, confirmation_deadline")
+    .select("lottery_date, confirmation_deadline, registration_rules")
     .eq("id", id)
     .single();
+
+  // Fetch organization details (for membership check)
+  const { data: org } = await supabase
+    .from("organizations")
+    .select("id, org_namn, slug")
+    .eq("org_namn", activity.agande_organisation) // Assuming agande_organisation is the name, ideally we should use ID if available in activity table
+    .single();
+
+  // If we can't find org by name, we might need to rely on other methods or just skip membership check for now.
+  // However, looking at the schema, activity table usually has org_id or similar.
+  // Let's check activity_dashboard definition or just fetch org by name for now as a fallback.
+  // Actually, activity_dashboard has owner_org_id.
+  const orgId = activity.owner_org_id;
 
   // 2. Get Profile & Registration Status
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, target_subgroup, is_verified")
     .eq("user_id", user.id)
     .single();
+
+  const { data: privateInfo } = await supabase
+    .from("users_private")
+    .select("birth_date")
+    .eq("user_id", user.id)
+    .single();
+
+  const birthYear = privateInfo?.birth_date ? new Date(privateInfo.birth_date).getFullYear() : null;
+  const profileWithAge = profile ? { ...profile, birth_year: birthYear } : null;
 
   let registrationStatus = null;
   let registrationNotes = null;
@@ -57,6 +82,23 @@ export default async function ActivityDetailPage(props: {
     registrationStatus = reg?.status;
     registrationNotes = reg?.notes;
   }
+
+  // Check membership status
+  let membership = null;
+  let isMember = false;
+  if (profile && orgId) {
+    const { data: memb } = await supabase
+      .from("memberships")
+      .select("*")
+      .eq("profile_id", profile.id)
+      .eq("org_id", orgId)
+      .single();
+    membership = memb;
+    isMember = memb?.membership_state === 'active';
+  }
+
+  const membershipTypes = orgId ? await getMembershipTypes(orgId) : [];
+  const requiresMembership = activityDetails?.registration_rules === 'ONLY_MEMBERS' || activityDetails?.registration_rules === 'SELECTED_MEMBERS';
 
   const timeZone = 'Europe/Stockholm';
   const startDate = new Date(activity.start_datum_tid);
@@ -100,7 +142,13 @@ export default async function ActivityDetailPage(props: {
         <div className="p-6 md:p-8 space-y-8">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 mb-2">{activity.aktivitet}</h1>
-            <p className="text-lg text-slate-600">{activity.agande_organisation}</p>
+            {orgId ? (
+              <Link href={`/app/fritidsgardar/${org?.slug || orgId}`} className="text-lg text-indigo-600 hover:underline">
+                {activity.agande_organisation}
+              </Link>
+            ) : (
+              <p className="text-lg text-slate-600">{activity.agande_organisation}</p>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 rounded-xl border border-slate-100">
@@ -209,21 +257,46 @@ export default async function ActivityDetailPage(props: {
                 )}
               </div>
             ) : (
-              <form action={registerForActivity.bind(null, id)}>
-                <button className={`w-full py-4 px-6 rounded-xl text-white font-bold text-lg shadow-md hover:shadow-lg transition-all transform active:scale-[0.98] ${activity.activity_type === 'RANDOM'
-                  ? 'bg-purple-600 hover:bg-purple-700'
-                  : 'bg-indigo-600 hover:bg-indigo-700'
-                  }`}>
-                  {activity.activity_type === 'RANDOM' ? 'Delta i lottning' : 'Anmäl dig nu'}
-                </button>
-                <p className="text-center text-sm text-slate-500 mt-3">
-                  Sista anmälningsdag: {activity.anmalningsfrist ? new Date(activity.anmalningsfrist).toLocaleDateString('sv-SE') : 'Ingen deadline'}
-                </p>
-              </form>
+              <>
+                {requiresMembership && !isMember ? (
+                  <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 space-y-4">
+                    <div className="flex items-start gap-3">
+                      <ShieldAlert className="w-6 h-6 text-amber-600 shrink-0 mt-1" />
+                      <div>
+                        <h3 className="font-bold text-amber-900 text-lg">Medlemskap krävs</h3>
+                        <p className="text-amber-700 mt-1">
+                          För att anmäla dig till denna aktivitet måste du vara medlem i {activity.agande_organisation}.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col sm:flex-row gap-3 pt-2">
+                      <MembershipButton
+                        orgId={orgId}
+                        initialMembership={membership}
+                        membershipTypes={membershipTypes}
+                        profile={profileWithAge}
+                      />
+                    </div>
+                  </div>
+                ) : (
+                  <form action={registerForActivity.bind(null, id)}>
+                    <button className={`w-full py-4 px-6 rounded-xl text-white font-bold text-lg shadow-md hover:shadow-lg transition-all transform active:scale-[0.98] ${activity.activity_type === 'RANDOM'
+                      ? 'bg-purple-600 hover:bg-purple-700'
+                      : 'bg-indigo-600 hover:bg-indigo-700'
+                      }`}>
+                      {activity.activity_type === 'RANDOM' ? 'Delta i lottning' : 'Anmäl dig nu'}
+                    </button>
+                    <p className="text-center text-sm text-slate-500 mt-3">
+                      Sista anmälningsdag: {activity.anmalningsfrist ? new Date(activity.anmalningsfrist).toLocaleDateString('sv-SE') : 'Ingen deadline'}
+                    </p>
+                  </form>
+                )}
+              </>
             )}
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 }

@@ -1,5 +1,5 @@
 'use client';
-import { useChat } from './chat-provider';
+import { useChat } from './chat-context';
 import { MessageInput } from './message-input';
 import { useEffect, useRef, useState } from 'react';
 import { createClient } from '@/utils/supabase/client';
@@ -92,7 +92,7 @@ export function ChatWindow() {
 
             {/* Input */}
             <div className="px-4 md:px-6 py-4 border-t border-slate-200 bg-white sticky bottom-0">
-                <MessageInput />
+                <MessageInput isBlocked={activeGroup?.participants.find(p => p.profile_id === currentUserId)?.is_blocked} />
             </div>
         </div>
     );

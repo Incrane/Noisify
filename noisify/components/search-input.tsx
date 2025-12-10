@@ -1,19 +1,23 @@
 'use client'
 
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useState, useEffect } from 'react'
 import { Search, X } from 'lucide-react'
 import { useDebouncedCallback } from 'use-debounce'
 
 export default function SearchInput({ placeholder = "Sök...", className = "" }: { placeholder?: string; className?: string }) {
   const router = useRouter()
   const searchParams = useSearchParams()
+  const [term, setTerm] = useState('')
 
-  const currentSearch = searchParams.get('q') || ''
+  useEffect(() => {
+    setTerm(searchParams.get('q') || '')
+  }, [searchParams])
 
-  const handleSearch = useDebouncedCallback((term: string) => {
+  const handleSearch = useDebouncedCallback((value: string) => {
     const params = new URLSearchParams(searchParams)
-    if (term) {
-      params.set('q', term)
+    if (value) {
+      params.set('q', value)
     } else {
       params.delete('q')
     }
@@ -24,6 +28,7 @@ export default function SearchInput({ placeholder = "Sök...", className = "" }:
     const params = new URLSearchParams(searchParams)
     params.delete('q')
     router.replace(`?${params.toString()}`)
+    setTerm('')
   }
 
   return (
@@ -32,11 +37,14 @@ export default function SearchInput({ placeholder = "Sök...", className = "" }:
       <input
         type="text"
         placeholder={placeholder}
-        defaultValue={currentSearch}
-        onChange={(e) => handleSearch(e.target.value)}
+        value={term}
+        onChange={(e) => {
+          setTerm(e.target.value)
+          handleSearch(e.target.value)
+        }}
         className="w-full pl-12 pr-10 py-3 rounded-full border border-slate-200 shadow-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
       />
-      {currentSearch && (
+      {term && (
         <button
           onClick={clearSearch}
           className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"

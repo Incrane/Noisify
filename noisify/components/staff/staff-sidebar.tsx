@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { LayoutDashboard, Building2, Calendar, BookOpen, DoorOpen, Medal, Trophy, Settings, LogOut, ChevronDown, Users, UserCog, BarChart3, MessageSquare, ArrowLeftRight, Gamepad2, ChevronsLeft, ChevronsRight } from "lucide-react";
+import { LayoutDashboard, Building2, Calendar, BookOpen, DoorOpen, Medal, Trophy, Settings, LogOut, ChevronDown, Users, UserCog, BarChart3, MessageSquare, ArrowLeftRight, Gamepad2, ChevronsLeft, ChevronsRight, Sparkles } from "lucide-react";
 import { signOut } from "@/app/login/actions";
 import { useState } from "react";
 import { cn } from "@/lib/utils";
@@ -54,8 +54,10 @@ export default function StaffSidebar({
   useEffect(() => {
     const fetchCounts = async () => {
       // Fetch unread chat count
-      const { data: chatData, error: chatError } = await supabase.rpc('get_unread_chat_count');
-      if (!chatError && chatData) {
+      const { data: chatData, error: chatError } = await supabase.rpc('get_unread_chat_count', {
+        p_org_id: currentOrgId
+      });
+      if (!chatError && chatData !== null) {
         setUnreadCount(chatData);
       }
 
@@ -75,10 +77,69 @@ export default function StaffSidebar({
 
     fetchCounts();
 
-    // Poll every 30s
-    const interval = setInterval(fetchCounts, 30000);
-    return () => clearInterval(interval);
-  }, [currentOrgId]);
+    // Subscribe to real-time changes
+    const channel = supabase
+      .channel('staff-sidebar-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'chat_messages'
+        },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: 'public',
+          table: 'chat_participants'
+        },
+        () => {
+          fetchCounts();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen for all changes to memberships (pending count)
+          schema: 'public',
+          table: 'memberships',
+          filter: currentOrgId ? `org_id=eq.${currentOrgId}` : undefined
+        },
+        () => {
+          fetchCounts();
+        }
+      )
+      .subscribe();
+
+    // Re-fetch when page visibility changes (e.g., user switches back to tab)
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        fetchCounts();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    // Listen for custom chat-read event dispatched when messages are marked as read
+    const handleChatRead = () => fetchCounts();
+    window.addEventListener('chat-read', handleChatRead);
+
+    // More frequent polling when on chat page (every 5s), else fallback 60s
+    const isOnChatPage = pathname.startsWith('/staff/chatt');
+    const pollInterval = isOnChatPage ? 5000 : 60000;
+    const interval = setInterval(fetchCounts, pollInterval);
+
+    return () => {
+      clearInterval(interval);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('chat-read', handleChatRead);
+      supabase.removeChannel(channel);
+    };
+  }, [currentOrgId, supabase, pathname]);
 
   const handleLinkClick = () => {
     if (onLinkClick) {
@@ -229,6 +290,10 @@ export default function StaffSidebar({
                     <UserCog className={subIconClass('/staff/verksamhet/personal')} />
                     <span className="font-medium">Personal</span>
                   </Link>
+                  <Link href="/staff/formaner" onClick={handleLinkClick} className={subLinkClass('/staff/formaner')}>
+                    <Sparkles className={subIconClass('/staff/formaner')} />
+                    <span className="font-medium">Förmåner</span>
+                  </Link>
                   <Link href="/staff/installningar" onClick={handleLinkClick} className={subLinkClass('/staff/installningar')}>
                     <Settings className={subIconClass('/staff/installningar')} />
                     <span className="font-medium">Inställningar</span>
@@ -319,7 +384,7 @@ export default function StaffSidebar({
       </nav>
 
       {/* Footer */}
-      <div className={cn("p-4 border-t border-slate-100 bg-slate-50/50", isCollapsed && "px-2")}>
+      <div className={cn("p-4 border-t border-slate-100 bg-slate-50/50 md:hidden", isCollapsed && "px-2")}>
         <div className={cn("flex items-center gap-3 p-2 rounded-xl hover:bg-white hover:shadow-sm transition-all cursor-pointer group", isCollapsed && "justify-center px-0")}>
           <div className="w-10 h-10 bg-linear-to-br from-indigo-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold text-sm shadow-sm ring-2 ring-white shrink-0">
             {alias?.charAt(0).toUpperCase() || userEmail.charAt(0).toUpperCase()}
@@ -356,10 +421,13 @@ export default function StaffSidebar({
           </div>
         )}
 
-        {/* Collapse Toggle */}
+      </div>
+
+      {/* Collapse Toggle - Visible only on desktop since mobile doesn't collapse */}
+      <div className={cn("p-4 pt-0 bg-slate-50/50 hidden md:flex", isCollapsed && "px-2")}>
         <button
           onClick={toggleCollapse}
-          className="w-full mt-4 flex items-center justify-center p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+          className="w-full flex items-center justify-center p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
         >
           {isCollapsed ? <ChevronsRight className="w-4 h-4" /> : <ChevronsLeft className="w-4 h-4" />}
         </button>

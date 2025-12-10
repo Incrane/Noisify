@@ -80,7 +80,11 @@ export default function UnsplashModal({ isOpen, onClose, onSelect, orgId }: Unsp
       if (pageNum === 1) {
         setPhotos(results)
       } else {
-        setPhotos(prev => [...prev, ...results])
+        setPhotos(prev => {
+          const existingIds = new Set(prev.map(p => p.id))
+          const newPhotos = results.filter(p => !existingIds.has(p.id))
+          return [...prev, ...newPhotos]
+        })
       }
       setHasMore(results.length > 0)
     } catch (err) {

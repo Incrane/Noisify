@@ -61,6 +61,11 @@ interface Lesson {
     duration_minutes: number
 }
 
+interface Perk {
+    id: string
+    name: string
+}
+
 export default function CourseForm({
     initialData,
     initialOrgId,
@@ -68,10 +73,12 @@ export default function CourseForm({
     organizationStaff = [],
     availableTags = [],
     organizationMembers = [],
+    availablePerks = [],
     initialInstructorIds = [],
     initialTagIds = [],
     initialModules = [],
-    initialSelectedMemberIds = []
+    initialSelectedMemberIds = [],
+    initialGrantPerkId = null
 }: {
     initialData?: CourseData
     initialOrgId?: string
@@ -79,10 +86,12 @@ export default function CourseForm({
     organizationStaff?: Instructor[]
     availableTags?: Tag[]
     organizationMembers?: Member[]
+    availablePerks?: Perk[]
     initialInstructorIds?: string[]
     initialTagIds?: string[]
     initialModules?: Module[]
     initialSelectedMemberIds?: string[]
+    initialGrantPerkId?: string | null
 }) {
     const router = useRouter()
     const [isSubmitting, setIsSubmitting] = useState(false)
@@ -129,6 +138,10 @@ export default function CourseForm({
 
     // Members State (for SELECTED_MEMBERS access level)
     const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>(initialSelectedMemberIds)
+
+    // Perk Grant State (perk granted when course is completed)
+    const [grantPerkId, setGrantPerkId] = useState<string | null>(initialGrantPerkId)
+
 
     // Modules State
     const [modules, setModules] = useState<Module[]>(initialModules)
@@ -270,6 +283,12 @@ export default function CourseForm({
         const action = (event.nativeEvent as any).submitter.name // 'draft' or 'publish'
         const status = action === 'publish' ? 'PUBLISHED' : 'DRAFT'
         formData.append('status', status)
+
+        // Add perk grant (for course completion rewards)
+        if (grantPerkId) {
+            formData.append('grant_perk_id', grantPerkId)
+        }
+
 
         try {
             if (initialData?.id) {
@@ -793,6 +812,26 @@ export default function CourseForm({
                                 </div>
                             )}
                         </div>
+
+                        {/* Perk Grant on Completion */}
+                        {availablePerks.length > 0 && (
+                            <div className="bg-white p-6 rounded-xl border border-slate-100 shadow-sm">
+                                <h3 className="text-lg font-bold text-slate-900 mb-2">Förmån vid slutförande</h3>
+                                <p className="text-slate-500 text-sm mb-4">
+                                    Deltagare som slutför kursen kan automatiskt få en förmån.
+                                </p>
+                                <select
+                                    value={grantPerkId || ''}
+                                    onChange={(e) => setGrantPerkId(e.target.value || null)}
+                                    className="w-full rounded-lg border border-slate-200 px-4 py-3 focus:ring-2 focus:ring-indigo-500 outline-none transition-all shadow-sm"
+                                >
+                                    <option value="">Ingen förmån</option>
+                                    {availablePerks.map(perk => (
+                                        <option key={perk.id} value={perk.id}>{perk.name}</option>
+                                    ))}
+                                </select>
+                            </div>
+                        )}
                     </TabsContent>
                 </Tabs>
 

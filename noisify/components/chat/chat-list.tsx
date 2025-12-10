@@ -1,5 +1,5 @@
 'use client';
-import { useChat } from './chat-provider';
+import { useChat } from './chat-context';
 import { cn } from '@/lib/utils';
 import { MessageSquare } from 'lucide-react';
 
@@ -41,6 +41,9 @@ export function ChatList() {
                             )}>
                                 {group.name || 'Namnlös grupp'}
                             </span>
+                            {group.unreadCount ? (
+                                <span className="h-2.5 w-2.5 rounded-full bg-indigo-600 shrink-0" />
+                            ) : null}
                             {/* Future: Time stamp */}
                         </div>
                         <div className={cn(

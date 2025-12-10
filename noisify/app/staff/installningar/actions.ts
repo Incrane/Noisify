@@ -4,6 +4,49 @@ import { createClient } from "@/utils/supabase/server";
 import { revalidatePath } from "next/cache";
 import { getSelectedOrganization } from "../actions";
 
+export interface MembershipStats {
+    [typeId: string]: {
+        active: number;
+        pending: number;
+        expired: number;
+        total: number;
+    };
+}
+
+export async function getMembershipStats(): Promise<{ data?: MembershipStats; error?: string }> {
+    const supabase = await createClient();
+    const orgId = await getSelectedOrganization();
+
+    if (!orgId) return { error: "Ingen organisation vald" };
+
+    const { data, error } = await supabase
+        .from("memberships")
+        .select("membership_type_id, membership_state")
+        .eq("org_id", orgId);
+
+    if (error) return { error: error.message };
+
+    // Aggregate counts by membership type
+    const stats: MembershipStats = {};
+
+    for (const m of data || []) {
+        const typeId = m.membership_type_id;
+        if (!typeId) continue;
+
+        if (!stats[typeId]) {
+            stats[typeId] = { active: 0, pending: 0, expired: 0, total: 0 };
+        }
+
+        if (m.membership_state === 'active') stats[typeId].active++;
+        else if (m.membership_state === 'pending') stats[typeId].pending++;
+        else if (m.membership_state === 'expired') stats[typeId].expired++;
+
+        stats[typeId].total++;
+    }
+
+    return { data: stats };
+}
+
 export async function updateOrganizationInfo(formData: FormData) {
     const supabase = await createClient();
     const orgId = await getSelectedOrganization();
@@ -93,23 +136,66 @@ export async function uploadOrganizationLogo(formData: FormData) {
     return { success: true, url: publicUrl };
 }
 
-export async function updateSchedule(scheduleId: string, timeslots: any[]) {
+export async function upsertSchedule(
+    startDate: string | null,
+    timeslots: any[],
+    config?: { weeks_count: number; week1_start: string | null }
+) {
     const supabase = await createClient();
     const orgId = await getSelectedOrganization();
 
     if (!orgId) return { error: "Ingen organisation vald" };
 
-    // Verify schedule belongs to org
-    const { data: schedule } = await supabase
+    // 1. Get or create the schedule
+    let scheduleId: string;
+
+    // Try to find existing schedule
+    let query = supabase
         .from("org_schedules")
         .select("id")
-        .eq("id", scheduleId)
-        .eq("org_id", orgId)
-        .single();
+        .eq("org_id", orgId);
 
-    if (!schedule) return { error: "Schema hittades inte" };
+    if (startDate) {
+        query = query.eq("start_date", startDate);
+    } else {
+        query = query.is("start_date", null);
+    }
 
-    // Delete existing timeslots for this schedule
+    const { data: existingSchedule } = await query.single();
+
+    if (existingSchedule) {
+        scheduleId = existingSchedule.id;
+
+        // Update config if provided (only for standard schedule usually, but harmless for others)
+        if (config) {
+            const { error: updateError } = await supabase
+                .from("org_schedules")
+                .update({
+                    weeks_count: config.weeks_count,
+                    week1_start: config.week1_start || '2000-01-01'
+                })
+                .eq("id", scheduleId);
+
+            if (updateError) console.error("Error updating schedule config:", updateError);
+        }
+    } else {
+        // Create new schedule
+        const { data: newSchedule, error: createError } = await supabase
+            .from("org_schedules")
+            .insert({
+                org_id: orgId,
+                start_date: startDate,
+                weeks_count: config?.weeks_count || 1,
+                week1_start: config?.week1_start || (startDate || '2000-01-01')
+            })
+            .select("id")
+            .single();
+
+        if (createError) return { error: "Kunde inte skapa schema: " + createError.message };
+        scheduleId = newSchedule.id;
+    }
+
+    // 2. Delete existing timeslots
     const { error: deleteError } = await supabase
         .from("org_timeslots")
         .delete()
@@ -117,7 +203,7 @@ export async function updateSchedule(scheduleId: string, timeslots: any[]) {
 
     if (deleteError) return { error: deleteError.message };
 
-    // Insert new timeslots
+    // 3. Insert new timeslots
     if (timeslots.length > 0) {
         const { error: insertError } = await supabase
             .from("org_timeslots")
@@ -125,6 +211,35 @@ export async function updateSchedule(scheduleId: string, timeslots: any[]) {
 
         if (insertError) return { error: insertError.message };
     }
+
+    revalidatePath("/staff/installningar");
+    return { success: true };
+}
+
+export async function deleteSchedule(scheduleId: string) {
+    const supabase = await createClient();
+    const orgId = await getSelectedOrganization();
+
+    if (!orgId) return { error: "Ingen organisation vald" };
+
+    // Verify ownership
+    const { data: schedule } = await supabase
+        .from("org_schedules")
+        .select("id")
+        .eq("id", scheduleId)
+        .eq("org_id", orgId)
+        .single();
+
+    if (!schedule) {
+        return { error: "Kunde inte hitta perioden eller behörighet saknas" };
+    }
+
+    const { error } = await supabase
+        .from("org_schedules")
+        .delete()
+        .eq("id", scheduleId);
+
+    if (error) return { error: error.message };
 
     revalidatePath("/staff/installningar");
     return { success: true };

@@ -47,6 +47,14 @@ The Noisify database is designed for a multi-tenant SaaS platform managing Swedi
 ### November 2024 Major Changes
 
 **New Features:**
+- ✅ **Förmåner (Perks) System** - Staff can create and manage perk types that grant special access (December 2025)
+  - New `perk_types` table for perk definitions/templates
+  - New `perk_type_organizations` table for invite-only multi-org sharing
+  - New `course_perks` table for perks granted upon course completion
+  - Modified `user_perks` table with `perk_type_id`, `source_type`, `source_id`, `granted_by`, `revoked_by`, `revoked_at`, `revoke_reason`
+  - Modified `room_perks` table with `perk_type_id` reference to perk definitions
+  - New RPC functions: `get_org_perk_types`, `user_has_perk_type`, `grant_perk_to_user`, `revoke_user_perk`, `get_user_perks`, `can_user_book_room_with_perks`
+  - Automatic perk granting on course completion via trigger
 - ✅ **Enhanced Membership System** - Added comprehensive membership features with expiry tracking
 - ✅ **User Settings System** - Complete preferences including notifications, privacy, and display settings
 - ✅ **Unified Member Views** - Created consistent `members_*` naming with Swedish labels

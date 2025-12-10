@@ -1,5 +1,66 @@
 # Changelog
 
+## 2025-12-08
+- **Feature: Förmåner (Perks) Staff Administration** - Comprehensive perk management system for staff users
+  - **Database Migration:** New tables (`perk_types`, `perk_type_organizations`, `course_perks`, `room_perks`) and modifications to `profile_perks`
+  - **Staff UI `/staff/formaner`:** List view with filters, create/edit/delete perk types, view users, multi-org sharing
+  - **Member Management:** Förmåner option in member details for granting/revoking perks
+  - **Sidebar:** Added Förmåner link under Verksamhet (above Inställningar)
+  - Files: `/staff/formaner/*`, `/components/staff/member-perks-modal.tsx`, staff-sidebar.tsx, member-details-modal.tsx
+- **Feature: Course Perk Grant on Completion** - Staff can select a perk to grant automatically when users complete a course
+  - Added "Förmån vid slutförande" dropdown in course Settings tab
+  - CourseForm now accepts `availablePerks` prop and `grantPerkId` state
+  - `createCourse` and `updateCourse` actions insert/update `course_perks` table
+  - Files: `/components/staff/course-form.tsx`, `/staff/kurser/actions.ts`, `/staff/kurser/new/page.tsx`
+- **Bug Fix: Förmåner Page Navigation** - Fixed redirect loop by using getSelectedOrganization() with fallback to first org
+- **Bug Fix: Perk Creation RLS Policy** - Fixed INSERT policy that was comparing profile_id to auth.uid() (should be user_id)
+- **Bug Fix: createPerkType Missing Columns** - Added required org_id and slug columns to INSERT query
+- **Bug Fix: Staff Statistics Page** - Fixed member count query and activity column names
+
+
+## 2025-12-07
+- **Bug Fix: Chat Unread Notification Badge** - Fixed unread badge not clearing after viewing messages
+- **Feature: Staff Member Actions Menu** - Added comprehensive member management dropdown in `/staff/medlemmar`
+  - New "Hantera" button with Kräv nytt alias, Skicka varning, Ta bort från chattgrupper, etc.
+- **Bug Fix: Visa uppgifter button** - Fixed "Kunde inte hämta personuppgifter" error
+- **Bug Fix: Fritidsgård Activities Not Showing** - Fixed activities not displayed on organization detail pages
+- **Feature: SEO-Friendly URLs for /app/fritidsgardar** - Implemented slug-based URLs
+
+## 2025-12-06
+- **UI/UX: Room Management Page Improvements** - Redesigned `/staff/rum` and `/staff/rum/new` pages
+  - Compact inline filter layout with status pills (color-coded: Väntar=amber, Godkänd=green, etc.)
+  - Added "Rensa filter" button for quick filter reset
+  - Moved Perk "+" button to text link "Skapa ny behörighet" below dropdown for better mobile layout
+  - Added custom image upload option alongside Unsplash in room cover section
+  - New `uploadRoomCover` server action for handling file uploads (max 5MB, JPG/PNG/WEBP)
+  - Improved mobile responsiveness with stacked layouts on smaller screens
+- **Feature: Verified Profile Badge on Staff Medlemmar** - Added verified/unverified profile indicator icons
+  - Added shield icons next to member avatars in `/staff/medlemmar` page
+  - Blue `ShieldCheck` icon shows for verified profiles, gray `Shield` icon for unverified profiles
+  - Updated `getMembers` and `getMemberByProfileId` actions to fetch `is_verified` field from profiles
+  - Both desktop table view and mobile card view now display the verification status
+- **UI/UX: Membership Settings Redesign** - Complete refactor of `/staff/installningar` → Medlemskap tab
+  - Implemented list-first layout showing existing memberships as primary view
+  - Added Active/Expired tabs with count badges for filtering membership types
+  - Converted create/edit form into modal dialog for cleaner experience
+  - Replaced 2-column layout with responsive card grid (1-3 columns)
+  - Each card shows mini preview, price, approval type, and date range
+  - Added "Skapa ny period" button in header for creating new memberships
+  - Added "Redigera" button on each card for inline editing
+  - Fixed scroll overlap issue (removed sticky positioning from preview panel)
+  - Fixed "Kräv verifierad profil" description (removed BankID reference, now uses `profiles.is_verified`)
+  - Preserved read-only mode for users with roleId < 3
+- **Feature: Membership Statistics** - Added member count statistics to membership settings
+  - Statistics overview cards showing Total, Active, and Pending member counts
+  - Per-card member count showing active members for each membership type
+  - New `getMembershipStats()` server action for data aggregation
+
+## 2025-12-04
+- **Security Fix: Activity Address Visibility** - Implemented database-level redaction for activity addresses.
+  - Addresses are now returned as `NULL` from the database when `hide_address` is enabled, ensuring they are never exposed to the client.
+  - Updated `v_explore_activities` view and `get_explore_activities` function.
+- **Bug Fix: City Selection** - Fixed issue where `city_id` was not being stored correctly when creating activities.
+- **Feature: SEO Slugs** - Implemented automatic SEO-friendly slug generation for new activities.
 
 ## 2025-11-26
 - **Bug Fix: City Selection Server Action** - Fixed "Invalid Server Actions request" error when clicking cities in the landing page

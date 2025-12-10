@@ -1,6 +1,6 @@
 import { createClient } from "@/utils/supabase/server";
 import { getSelectedOrganization } from "../actions";
-import { getCities } from "./actions";
+import { getCities, getMembershipStats } from "./actions";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import OrgInfoForm from "@/components/staff/settings/org-info-form";
 import OpeningHoursForm from "@/components/staff/settings/opening-hours-form";
@@ -30,9 +30,10 @@ export default async function SettingsPage() {
     const { data: schedules } = await supabase
         .from("org_schedules")
         .select("*, org_timeslots(*)")
-        .eq("org_id", orgId);
+        .eq("org_id", orgId)
+        .order("start_date", { ascending: true, nullsFirst: true });
 
-    const currentSchedule = schedules?.[0] || null;
+    // schedules now contains both the standard schedule (start_date is null) and weekly overrides
 
     // Fetch Membership Types
     const { data: membershipTypes } = await supabase
@@ -66,6 +67,9 @@ export default async function SettingsPage() {
 
     // Fetch cities
     const cities = await getCities();
+
+    // Fetch membership stats
+    const { data: membershipStats } = await getMembershipStats();
 
     return (
         <div className="space-y-6">
@@ -105,7 +109,7 @@ export default async function SettingsPage() {
                 </TabsContent>
 
                 <TabsContent value="hours" className="space-y-4">
-                    <OpeningHoursForm schedule={currentSchedule} orgId={orgId} roleId={roleId} />
+                    <OpeningHoursForm schedules={schedules || []} orgId={orgId} roleId={roleId} />
                 </TabsContent>
 
                 {roleId >= 3 && (
@@ -115,7 +119,11 @@ export default async function SettingsPage() {
                 )}
 
                 <TabsContent value="membership" className="space-y-4">
-                    <MembershipSettingsForm membershipTypes={membershipTypes || []} roleId={roleId} />
+                    <MembershipSettingsForm
+                        membershipTypes={membershipTypes || []}
+                        membershipStats={membershipStats || {}}
+                        roleId={roleId}
+                    />
                 </TabsContent>
             </Tabs>
         </div>

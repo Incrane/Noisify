@@ -10,6 +10,7 @@ import StaffSidebar from "./staff-sidebar"
 import { createClient } from "@/utils/supabase/client"
 import { useEffect } from "react"
 import NotificationsDropdown from "@/components/notifications-dropdown"
+import StaffUserMenu from "./staff-user-menu"
 
 interface Org {
   org_id: string;
@@ -119,10 +120,14 @@ export default function StaffHeader({
             Väntar på godkännande
           </span>
         )}
-        <div className="h-8 w-px bg-slate-200 mx-2 hidden sm:block"></div>
         <NotificationsDropdown />
+        <div className="hidden md:block">
+          <StaffUserMenu userEmail={userEmail} alias={userAlias} />
+        </div>
+        <div className="h-6 w-px bg-slate-200 mx-1 hidden sm:block"></div>
         <AppSwitcher />
       </div>
     </header>
   )
 }
+

@@ -14,9 +14,10 @@ interface RegistrationStatus {
 export default async function ActivitiesPage({
   searchParams,
 }: {
-  searchParams: { [key: string]: string | string[] | undefined };
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
   const supabase = await createClient();
+  const params = await searchParams;
 
   const {
     data: { user },
@@ -27,17 +28,24 @@ export default async function ActivitiesPage({
   // 1. Get User Profile
   const { data: profile } = await supabase
     .from("profiles")
-    .select("id")
+    .select("id, city_id")
     .eq("user_id", user.id)
     .single();
 
   // 2. Fetch Activities (Published) from Dashboard View
-  const { data: activities, error } = await supabase
-    .from("activity_dashboard")
+  // 2. Fetch Activities (Published) from Member View
+  let activitiesQuery = supabase
+    .from("v_member_activities")
     .select("*")
     .eq("activity_status", "PUBLISHED")
     .gt("slut_datum_tid", new Date().toISOString())
     .order("start_datum_tid", { ascending: true });
+
+  if (profile?.city_id) {
+    activitiesQuery = activitiesQuery.eq("city_id", profile.city_id);
+  }
+
+  const { data: activities, error } = await activitiesQuery;
 
   if (error) {
     console.error("Error fetching activities:", error);
@@ -45,14 +53,9 @@ export default async function ActivitiesPage({
   }
 
   // Filter activities based on search query
-  const query = typeof searchParams.q === 'string' ? searchParams.q.toLowerCase() : '';
+  const query = typeof params.q === 'string' ? params.q.toLowerCase() : '';
 
-  const filteredActivities = activities?.filter(activity => {
-    if (!query) return true;
-    const nameMatch = activity.name?.toLowerCase().includes(query);
-    const orgMatch = activity.org_namn?.toLowerCase().includes(query);
-    return nameMatch || orgMatch;
-  }) || [];
+
 
   // 3. Fetch User Registrations
   let myRegistrations: RegistrationStatus[] = [];
@@ -84,11 +87,53 @@ export default async function ActivitiesPage({
     return reg ? reg.status : null;
   };
 
+  // 3b. Fetch full addresses for accepted activities
+  const acceptedActivityIds = myRegistrations
+    .filter(r => r.status === 'ACCEPTED')
+    .map(r => r.activity_id);
+
+  const activitiesWithHiddenAddress = activities?.filter(a =>
+    acceptedActivityIds.includes(a.activity_id) && a.hide_address
+  ) || [];
+
+  let addressMap = new Map<string, string>();
+
+  if (activitiesWithHiddenAddress.length > 0) {
+    const { data: addresses } = await supabase
+      .from("activity")
+      .select("id, address")
+      .in("id", activitiesWithHiddenAddress.map(a => a.activity_id));
+
+    if (addresses) {
+      addresses.forEach(a => addressMap.set(a.id, a.address));
+    }
+  }
+
+  // Merge addresses back into activities
+  const activitiesWithAddresses = activities?.map(activity => {
+    if (addressMap.has(activity.activity_id)) {
+      return {
+        ...activity,
+        plats: addressMap.get(activity.activity_id)
+      };
+    }
+    return activity;
+  }) || [];
+
+  // Update references to use the merged array
+  // Update references to use the merged array
+  const filteredActivities = activitiesWithAddresses.filter(activity => {
+    if (!query) return true;
+    const nameMatch = activity.aktivitet?.toLowerCase().includes(query); // Note: View uses 'aktivitet' alias for name
+    const orgMatch = activity.agande_organisation?.toLowerCase().includes(query); // View uses 'agande_organisation'
+    return nameMatch || orgMatch;
+  });
+
   // 4. Calculate Stats & Lists
   const invitationCount = myRegistrations.filter((r) => r.status === "INVITED").length;
 
-  const myUpcomingActivities = activities
-    ?.filter((activity) => {
+  const myUpcomingActivities = activitiesWithAddresses
+    .filter((activity) => {
       const status = getRegistrationStatus(activity.activity_id);
       if (!status) return false;
       // Include confirmed, pending, invited, waitlisted
@@ -98,9 +143,9 @@ export default async function ActivitiesPage({
 
       return isRelevant && isFuture;
     })
-    .slice(0, 3) || [];
+    .slice(0, 3);
 
-  const favoriteActivities = activities?.filter(a => favoriteIds.has(a.activity_id)) || [];
+  const favoriteActivities = activitiesWithAddresses.filter(a => favoriteIds.has(a.activity_id));
 
   return (
     <div className="space-y-8 pb-12">

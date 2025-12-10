@@ -131,6 +131,16 @@ export async function createCourse(formData: FormData) {
         await supabase.from('course_tags').insert(tagInserts);
     }
 
+    // Insert Course Perk (perk granted on completion)
+    const grantPerkId = formData.get('grant_perk_id') as string | null;
+    if (grantPerkId) {
+        await supabase.from('course_perks').insert({
+            course_id: courseId,
+            perk_type_id: grantPerkId,
+            grant_condition: 'ON_COMPLETION'
+        });
+    }
+
     revalidatePath('/staff/kurser');
     return courseId;
 }
@@ -261,6 +271,17 @@ export async function updateCourse(courseId: string, formData: FormData) {
                 await supabase.from('course_lessons').insert(lessonInserts);
             }
         }
+    }
+
+    // Update Course Perks (delete all and re-insert)
+    await supabase.from('course_perks').delete().eq('course_id', courseId);
+    const grantPerkId = formData.get('grant_perk_id') as string | null;
+    if (grantPerkId) {
+        await supabase.from('course_perks').insert({
+            course_id: courseId,
+            perk_type_id: grantPerkId,
+            grant_condition: 'ON_COMPLETION'
+        });
     }
 
     revalidatePath('/staff/kurser');

@@ -32,6 +32,11 @@ interface MemberRow {
   };
 }
 
+interface Perk {
+  id: string;
+  name: string;
+}
+
 export default async function NewCoursePage() {
   const supabase = await createClient();
   const { data: { user } } = await supabase.auth.getUser();
@@ -137,6 +142,21 @@ export default async function NewCoursePage() {
     console.error('Exception fetching members:', e);
   }
 
+  // Fetch Available Perks for perk grant on completion
+  let availablePerks: Perk[] = [];
+  try {
+    const { data: perksData, error } = await supabase
+      .from('perk_types')
+      .select('id, name')
+      .eq('org_id', initialOrgId)
+      .eq('is_active', true)
+      .order('name');
+    if (error) console.error('Error fetching perks:', error);
+    availablePerks = perksData || [];
+  } catch (e) {
+    console.error('Exception fetching perks:', e);
+  }
+
   return (
     <div className="max-w-7xl mx-auto">
       <div className="mb-8">
@@ -156,6 +176,7 @@ export default async function NewCoursePage() {
         organizationStaff={organizationStaff}
         availableTags={availableTags}
         organizationMembers={organizationMembers}
+        availablePerks={availablePerks}
       />
     </div>
   );

@@ -1,16 +1,27 @@
 'use client'
 
-import { useState } from 'react'
-import { createAccount } from '@/actions/onboarding-actions'
+import { useState, useEffect } from 'react'
+import { createAccount, getCities } from '@/actions/onboarding-actions'
 import { toast } from 'sonner'
 import { Loader2 } from 'lucide-react'
+import Link from 'next/link'
 
 interface StepAccountProps {
     onComplete: (data: any) => void
 }
 
+interface City {
+    id: string
+    city: string
+}
+
 export default function StepAccount({ onComplete }: StepAccountProps) {
     const [loading, setLoading] = useState(false)
+    const [cities, setCities] = useState<City[]>([])
+
+    useEffect(() => {
+        getCities().then(setCities)
+    }, [])
 
     async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
         e.preventDefault()
@@ -44,13 +55,20 @@ export default function StepAccount({ onComplete }: StepAccountProps) {
             firstName: formData.get('firstName'),
             lastName: formData.get('lastName'),
             phone: formData.get('phone'),
+            cityId: formData.get('cityId'),
         })
     }
 
     return (
         <div>
-            <h1 className="text-3xl font-bold text-slate-900 mb-2">Kom igång med din organisation</h1>
-            <p className="text-slate-600 mb-8">Skapa ett konto för att komma igång</p>
+            <h1 className="text-3xl font-bold text-slate-900 mb-2">Konto</h1>
+            <p className="text-slate-600 mb-4">Fyll i dina uppgifter för att skapa ett konto.</p>
+
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+                <p className="text-sm text-blue-800">
+                    <strong>Obs:</strong> Denna information kommer att vara privat i plattformen och används endast för att hantera ditt konto.
+                </p>
+            </div>
 
             <form onSubmit={handleSubmit} className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
@@ -112,6 +130,24 @@ export default function StepAccount({ onComplete }: StepAccountProps) {
 
                 <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">
+                        Stad <span className="text-red-500">*</span>
+                    </label>
+                    <select
+                        name="cityId"
+                        required
+                        className="w-full rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all bg-white"
+                    >
+                        <option value="">Välj stad</option>
+                        {cities.map(city => (
+                            <option key={city.id} value={city.id}>
+                                {city.city}
+                            </option>
+                        ))}
+                    </select>
+                </div>
+
+                <div>
+                    <label className="block text-sm font-medium text-slate-700 mb-1">
                         Mobilnummer <span className="text-red-500">*</span>
                     </label>
                     <div className="flex gap-2">
@@ -132,7 +168,6 @@ export default function StepAccount({ onComplete }: StepAccountProps) {
                             className="flex-1 rounded-lg border border-slate-300 px-3 py-2.5 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-200 transition-all"
                         />
                     </div>
-                    <p className="text-xs text-slate-500 mt-1">Ange ditt jobbnummer om du har ett</p>
                 </div>
 
                 <div>
@@ -156,7 +191,7 @@ export default function StepAccount({ onComplete }: StepAccountProps) {
                         className="mt-1 w-4 h-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
                     />
                     <label htmlFor="terms" className="text-sm text-slate-600">
-                        Jag accepterar terms and conditions
+                        Jag accepterar <Link href="/villkor" className="text-indigo-600 hover:underline" target="_blank">användarvillkoren</Link>
                     </label>
                 </div>
 
