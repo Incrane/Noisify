@@ -1,10 +1,10 @@
 # Noisify Database Schema Documentation
 
-**Generated:** November 25, 2025 (Updated)  
+**Generated:** December 10, 2025 (Updated)  
 **Database:** PostgreSQL 14+ (Supabase)  
-**Total Tables:** 93  
-**Total Views:** 37  
-**Total RPC Functions:** 85  
+**Total Tables:** 97  
+**Total Views:** 40  
+**Total RPC Functions:** 92  
 **Total Edge Functions:** 4  
 **Total Storage Buckets:** 5
 
@@ -67,6 +67,14 @@ The Noisify database is designed for a multi-tenant SaaS platform managing Swedi
 - ✅ **Organization Onboarding** - Self-service organization registration with wizard flow (November 2025)
 - ✅ **SEO Slugs** - Added `slug` columns to organizations and activities for friendly URLs (November 2025)
 - ✅ **Live Quiz System** - Kahoot-style interactive quiz feature (November 2025)
+- ✅ **Tournament System** - Competitive gaming platform with seasons, leaderboards, and snake draft (December 2025)
+  - New `t_seasons` table for tournament seasons with scoring and registration rules engines
+  - New `t_player_stats` table for player roster and statistics per season
+  - New `t_match_days` table for match scheduling with RSVP and team generation
+  - New `t_match_events` table for scoring events during matches
+  - New views: `t_leaderboard`, `t_season_dashboard`, `t_match_day_detail`
+  - New RPC functions: `join_tournament_season`, `check_tournament_eligibility`, `record_match_event`, `undo_match_event`, `update_match_rsvp`, `check_in_player`, `generate_snake_draft_teams`
+  - Real-time enabled for live scoring updates
 
 **Security Improvements:**
 - ✅ Fixed all SECURITY DEFINER functions with proper `search_path`
@@ -354,6 +362,184 @@ supabase
   }, handleParticipantUpdate)
   .subscribe();
 ```
+
+---
+
+## Tournament System
+
+### Overview
+The Tournament System provides a competitive gaming platform for youth recreation centers. Staff can create seasons/leagues with configurable scoring rules, and youth can register, track their stats, and compete in match days.
+
+### `t_seasons`
+Tournament seasons linked to organizations with configurable rules.
+
+```typescript
+interface Season {
+  id: string;                    // UUID, primary key
+  created_at: string;
+  updated_at: string;
+  organization_id: string;       // References organizations
+  name: string;                  // e.g., "La Liga HT25"
+  description: string | null;
+  is_active: boolean;            // Default: true
+  
+  // SCORING ENGINE - Dynamic point values
+  point_config: {
+    goal?: number;               // e.g., 1
+    assist?: number;             // e.g., 2
+    win?: number;                // e.g., 12
+    [key: string]: number;       // Custom event types
+  };
+  
+  // REGISTRATION ENGINE - Eligibility rules
+  registration_config: {
+    method: 'manual' | 'automatic';
+    access?: 'open_for_all' | 'members_only' | 'selected_members';
+    min_age?: number;
+    max_age?: number;
+    allowed_genders?: string[];  // UUIDs from gender table
+    allowed_groups?: string[];   // UUIDs from target_subgroups
+  };
+  
+  starts_at: string | null;
+  ends_at: string | null;
+  created_by: string | null;     // References profiles
+}
+```
+
+### `t_player_stats`
+Player roster and statistics per season.
+
+```typescript
+interface PlayerStats {
+  id: string;                    // UUID, primary key
+  season_id: string;             // References t_seasons
+  profile_id: string;            // References profiles
+  total_points: number;          // Calculated from events
+  goals: number;
+  assists: number;
+  wins: number;
+  losses: number;
+  matches_played: number;
+  badges: Badge[];               // Achievement badges
+  status: 'active' | 'inactive' | 'suspended';
+  joined_at: string;
+  created_at: string;
+  updated_at: string;
+}
+```
+
+### `t_match_days`
+Individual match days with RSVP and team generation.
+
+```typescript
+interface MatchDay {
+  id: string;                    // UUID, primary key
+  season_id: string;             // References t_seasons
+  date: string;                  // Match date/time
+  location: string | null;
+  status: 'open_for_rsvp' | 'rsvp_closed' | 'in_progress' | 'completed' | 'cancelled';
+  
+  // RSVP tracking
+  rsvp_list: {
+    [profile_id: string]: {
+      status: 'attending' | 'not_attending';
+      checked_in?: boolean;
+      checked_in_at?: string;
+    };
+  };
+  
+  // Snake draft generated teams
+  generated_teams: {
+    id: string;
+    name: string;                // e.g., "Lag 1"
+    captain: string;             // profile_id
+    players: string[];           // profile_ids
+  }[];
+  
+  results: object;               // Match results summary
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+  created_by: string | null;
+}
+```
+
+### `t_match_events`
+Individual scoring events during matches.
+
+```typescript
+interface MatchEvent {
+  id: string;                    // UUID, primary key
+  match_day_id: string;          // References t_match_days
+  profile_id: string;            // Player who scored
+  event_type: string;            // 'goal', 'assist', 'win', etc.
+  points_awarded: number;        // Snapshot from point_config
+  team_id: string | null;        // Team reference
+  assisted_by: string | null;    // For goals with assists
+  created_at: string;
+  recorded_by: string | null;    // Staff who recorded
+}
+```
+
+### Tournament Views
+
+| View Name | Purpose | Key Features |
+|-----------|---------|--------------|
+| `t_leaderboard` | Season rankings | Rank by points, player stats, badges |
+| `t_season_dashboard` | Season overview | Player count, match days, next match |
+| `t_match_day_detail` | Match day info | RSVP counts, teams, event counts |
+
+### Tournament RPC Functions
+
+| Function | Purpose | Parameters |
+|----------|---------|------------|
+| `join_tournament_season(season_id)` | User joins a season | Validates eligibility |
+| `check_tournament_eligibility(season_id)` | Check if user can join | Returns eligibility + errors |
+| `record_match_event(match_day_id, profile_id, event_type, team_id?, assisted_by?)` | Record scoring event | Updates stats |
+| `undo_match_event(event_id)` | Undo last event | Reverts stats |
+| `update_match_rsvp(match_day_id, status)` | User RSVP | 'attending' or 'not_attending' |
+| `check_in_player(match_day_id, profile_id)` | Staff check-in | Marks player as present |
+| `generate_snake_draft_teams(match_day_id, num_teams)` | Generate teams | Snake draft by points |
+
+### Snake Draft Algorithm
+1. Sort checked-in players by `total_points` (descending)
+2. Top N players become team captains
+3. Distribute remaining players in snake pattern: 1-2-3-4, 4-3-2-1, 1-2-3-4...
+4. Result stored in `t_match_days.generated_teams`
+
+### Real-time Subscriptions
+```typescript
+// Subscribe to live scoring
+supabase
+  .channel(`match_${matchDayId}`)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 't_match_events',
+    filter: `match_day_id=eq.${matchDayId}`
+  }, handleNewEvent)
+  .on('postgres_changes', {
+    event: '*',
+    schema: 'public',
+    table: 't_player_stats',
+    filter: `season_id=eq.${seasonId}`
+  }, handleStatsUpdate)
+  .subscribe();
+```
+
+### Routes
+
+**Staff Routes:**
+- `/staff/tournament` - Season list
+- `/staff/tournament/[seasonId]` - Season dashboard
+- `/staff/tournament/[seasonId]/spelarstatistik` - Player stats
+- `/staff/tournament/[seasonId]/matchdagar` - Match days
+- `/staff/tournament/[seasonId]/matchdagar/[matchDayId]` - Live scoring
+
+**User Routes:**
+- `/app/fritidsgardar/[slug]` - Organization page with tournament widget
+- `/app/tournament/[seasonId]` - Season leaderboard
 
 ---
 

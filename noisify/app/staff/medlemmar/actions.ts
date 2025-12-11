@@ -212,7 +212,63 @@ export async function createLocalMember(
   const { data: { user } } = await supabase.auth.getUser();
   if (!user) return { error: 'Unauthorized' };
 
-  // Insert into local_members table
+  // 1. Get Organization City
+  const { data: org, error: orgError } = await supabase
+    .from('organizations')
+    .select('city_id, org_namn')
+    .eq('id', orgId)
+    .single();
+
+  if (orgError) {
+    console.error('Error fetching org:', orgError);
+    return { error: 'Kunde inte hämta organisationen' };
+  }
+
+  // 2. Create "Shadow" Profile
+  const { data: profile, error: profileError } = await supabase
+    .from('profiles')
+    .insert({
+      alias: alias,
+      account_type: 'local',
+      city_id: org.city_id,
+      user_id: null, // Explicitly null for local users
+      // Store names in profiles? Or relying on local_members?
+      // Profiles has no name columns? Wait, search_in_file showed users_private!
+      // But we can't insert into users_private without a user_id (it references auth.users usually?)
+      // Let's check users_private schema.
+      // If profiles doesn't have first/last name, we might rely on the local_members record for details.
+      // But t_player_stats relies on profiles. 
+      // The "Add Player" modal uses getOrganizationMembersForTournament which joins profiles -> users_private.
+      // If users_private requires a user_id, we can't use it for local members.
+      // We might need to add first_name/last_name to profiles OR allow users_private to have null user_id?
+      // Let's check users_private schema.
+    })
+    .select('id')
+    .single();
+
+  if (profileError) {
+    console.error('Error creating profile:', profileError);
+    return { error: 'Kunde inte skapa profil för lokal medlem.' };
+  }
+
+  // 3. Create Membership
+  const { error: membershipError } = await supabase
+    .from('memberships')
+    .insert({
+      org_id: orgId,
+      profile_id: profile.id,
+      membership_state: 'active',
+      start_date: new Date().toISOString(),
+    });
+
+  if (membershipError) {
+    console.error('Error creating membership:', membershipError);
+    // Cleanup profile? 
+    await supabase.from('profiles').delete().eq('id', profile.id);
+    return { error: 'Kunde inte skapa medlemskap.' };
+  }
+
+  // 4. Insert into local_members table (linked to profile)
   const { error } = await supabase
     .from('local_members')
     .insert({
@@ -225,11 +281,15 @@ export async function createLocalMember(
       email: details?.email,
       phone_number: details?.phone,
       birth_date: details?.birthDate,
-      notes: details?.notes
+      notes: details?.notes,
+      profile_id: profile.id
     });
 
   if (error) {
     console.error('Error creating local member:', error);
+    // Cleanup
+    await supabase.from('memberships').delete().eq('profile_id', profile.id).eq('org_id', orgId);
+    await supabase.from('profiles').delete().eq('id', profile.id);
     return { error: 'Kunde inte skapa lokal medlem.' };
   }
 

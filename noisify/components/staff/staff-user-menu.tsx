@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useTransition } from 'react';
 import { signOut } from '@/app/login/actions';
 import StaffProfileModal from './staff-profile-modal';
 import {
@@ -26,6 +26,13 @@ export default function StaffUserMenu({
     isCollapsed = false
 }: StaffUserMenuProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
+    const [isPending, startTransition] = useTransition();
+
+    const handleLogout = () => {
+        startTransition(async () => {
+            await signOut();
+        });
+    };
 
     // Avatar component
     const Avatar = () => (
@@ -68,14 +75,14 @@ export default function StaffUserMenu({
                         <span>Profilinställningar</span>
                     </DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <form action={signOut} className="w-full">
-                        <button type="submit" className="w-full">
-                            <DropdownMenuItem className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50">
-                                <LogOut className="mr-2 h-4 w-4" />
-                                <span>Logga ut</span>
-                            </DropdownMenuItem>
-                        </button>
-                    </form>
+                    <DropdownMenuItem 
+                        onClick={handleLogout} 
+                        disabled={isPending}
+                        className="cursor-pointer text-red-600 focus:text-red-600 focus:bg-red-50"
+                    >
+                        <LogOut className="mr-2 h-4 w-4" />
+                        <span>{isPending ? 'Loggar ut...' : 'Logga ut'}</span>
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
 

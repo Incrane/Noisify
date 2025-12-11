@@ -370,12 +370,12 @@ export default function StaffSidebar({
               )}
             </Link>
 
-            <Link href="#" className={cn("flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-400 hover:bg-slate-50 hover:text-slate-600 transition-all group cursor-not-allowed opacity-70", isCollapsed && "justify-center px-2")}>
-              <Trophy className="w-5 h-5 text-slate-400 group-hover:text-slate-500 transition-colors" />
+            <Link href="/staff/tournament" onClick={handleLinkClick} className={linkClass('/staff/tournament')}>
+              <Trophy className={iconClass('/staff/tournament')} />
               {!isCollapsed && (
                 <>
                   <span className="font-medium flex-1">Turneringar</span>
-                  <span className="text-[10px] font-semibold bg-slate-100 text-slate-500 px-2 py-0.5 rounded-full">SNART</span>
+                  <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">NY</span>
                 </>
               )}
             </Link>

@@ -1,7 +1,7 @@
 # Project Status: Noisify
 
-**Date:** 2025-11-26
-**Overall Completion:** ~92%
+**Date:** 2025-12-10
+**Overall Completion:** ~95%
 
 ## 📊 Completion Summary
 
@@ -42,6 +42,11 @@
 - [x] **Youth Centers** (`/app/fritidsgardar`) - *List & Membership*
 - [x] **Youth Center Detail** (`/app/fritidsgardar/[id]`) - *Apply for membership*
 - [x] **My Registrations** (`/app/mina-anmalningar`) - *Manage bookings*
+- [x] **Tournaments** (`/app/turneringar`) - *Browse and join tournaments (2025-12-10)* 🆕
+  - [x] Browse active tournaments with org filter
+  - [x] Season detail with leaderboard, matchdays, point system
+  - [x] Join tournament with eligibility check
+  - [x] Match day RSVP (Jag kommer / Kan inte komma)
 - [x] **My Profile** (`/app/profil`) - *User hub*
     - [x] **Settings** (`/app/profil/installningar`) - *Preferences*
     - [x] **Favorites** (`/app/profil/favoriter`) - *Saved items*
@@ -79,6 +84,16 @@
   - [x] Community Library with clone feature
   - [x] Host Mode with real-time game controls
   - [x] Lobby, Countdown, Question, Answer Reveal, Leaderboard views
+- [x] **Tournament System** (`/staff/tournament`) - *Competitive gaming platform (2025-12-10)* 🆕
+  - [x] Season list page with create/delete
+  - [x] Season detail page with tabs (Overview, Leaderboard, Match Days, Settings)
+  - [x] Create season modal with 3-step wizard (info, points, registration rules)
+  - [x] Dynamic point config (goal, assist, win, custom events)
+  - [x] Registration rules engine (method, access, age limits, target groups)
+  - [x] Match day creation and management (`/staff/tournament/[id]/matchdagar/new`)
+  - [x] Live scoring interface (`/staff/tournament/[id]/matchdagar/[matchDayId]`)
+  - [x] Player management (`/staff/tournament/[id]/spelarstatistik`)
+  - [x] Snake draft team generation (RPC function ready)
 - [ ] **Course Editor** - *Refinement in progress*
 
 ## ⚙️ API & System

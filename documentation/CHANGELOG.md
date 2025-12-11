@@ -1,5 +1,76 @@
 # Changelog
 
+## 2025-12-11
+- **Bug Fix: Tournament Player Removal** - Fixed staff unable to remove players from spelarstatistik page
+  - Issue: RLS DELETE policy on `t_player_stats` was silently blocking delete operations
+  - Solution: `removePlayerFromSeason` now verifies staff access server-side and uses admin client for the delete
+  - Added proper authorization checks (user auth, profile lookup, org_user role verification)
+- **UI Improvement: Player Delete Confirmation** - Replaced native `window.confirm()` with styled Dialog component
+  - Modern UI dialog with "Ta bort spelare" title and player name
+  - Cancel and destructive confirm buttons with loading state
+  - Better UX consistency with the rest of the application
+- **Bug Fix: Perk Type Organizations RLS** - Fixed "Error fetching pending invites" on Förmåner page
+  - Issue: RLS policies on `perk_type_organizations` used incorrect `org_user.profile_id = auth.uid()` check
+  - Solution: Updated all policies to properly join through `profiles` table: `profiles.user_id = auth.uid()`
+  - Fixed SELECT, INSERT, and UPDATE policies
+
+## 2025-12-10
+- **Feature: Tournament System (Turneringar)** - Competitive gaming platform with seasons, leaderboards, and snake draft
+  - **Database Migration:** 4 new tables (`t_seasons`, `t_player_stats`, `t_match_days`, `t_match_events`)
+  - **Views:** `t_leaderboard`, `t_season_dashboard`, `t_match_day_detail`
+  - **RPC Functions:** `join_tournament_season`, `check_tournament_eligibility`, `record_match_event`, `undo_match_event`, `update_match_rsvp`, `check_in_player`, `generate_snake_draft_teams`
+  - **Scoring Engine:** Dynamic points via JSONB `point_config` (goal, assist, win, etc.)
+  - **Registration Engine:** JSONB `registration_config` with method (manual/automatic), access rules, age limits, gender/group restrictions
+  - **Snake Draft Algorithm:** Auto-generate balanced teams based on player rankings
+  - **Real-time:** Enabled realtime subscriptions for live scoring
+  - **TypeScript Types:** Added `/types/tournament.ts` with comprehensive type definitions
+  - **Staff UI Pages:**
+    - `/staff/tournament` - Season list with cards and empty state
+    - `/staff/tournament/[seasonId]` - Season detail with tabs (Overview, Leaderboard, Match Days, Settings)
+    - `/staff/tournament/[seasonId]/matchdagar/new` - Create match day form
+    - `/staff/tournament/[seasonId]/matchdagar/[matchDayId]` - Live scoring with check-in, teams, and event log
+    - `/staff/tournament/[seasonId]/spelarstatistik` - Player management with search and stats table
+  - **Components:** CreateSeasonModal (3-step wizard), LeaderboardTable, MatchDayList
+  - **Bug Fix:** RLS policies updated to use `user_id = auth.uid()` instead of `profile_id`
+  - **User UI Pages:**
+    - `/app/turneringar` - Browse active tournaments with organization filter
+    - `/app/turneringar/[seasonId]` - Season detail with join, leaderboard, matchdays
+    - `/app/turneringar/[seasonId]/matchdag/[matchDayId]` - RSVP attendance
+  - **User Sidebar:** Added "Turneringar" link with NY badge
+  - **Bug Fix:** RPC functions fixed to lookup `profile_id` from `profiles` table using `user_id`
+  - **Real-time Hooks:** Created `/hooks/use-tournament-realtime.ts` with:
+    - `useLeaderboardRealtime` - Live leaderboard updates
+    - `useMatchDayRealtime` - Live RSVP and scoring updates
+    - `useSeasonDashboardRealtime` - Live season stats updates
+  - **Security Fix:** Leaderboard visibility restricted to registered players and staff only
+    - Created `get_season_leaderboard` RPC with access control
+    - Added RLS policy `Restricted player stats visibility`
+  - **Staff Name Display:** Staff can see real names (first_name, last_name) + @alias in leaderboard
+  - **Add Player Modal:** Now shows organization members list by default (not just search)
+  - **Match Day Staff Check-in:** Staff can add any tournament player directly to match day RSVP
+  - **Match System Redesign:** Complete overhaul of live scoring
+    - Round-robin match generation after teams are created
+    - Match list with status badges (Väntar, Pågår, Avslutad)
+    - Active match view with countdown timer
+    - Pause/Resume timer functionality
+    - Auto-complete match when timer ends
+    - Win/Loss point awards to all team players
+    - New RPC functions: `generate_matches_for_teams`, `start_match`, `toggle_match_pause`, `end_match`, `record_match_event`
+  - **Team Editor:** Full team management capabilities
+    - Rename teams (not just Lag 1, Lag 2)
+    - Change team colors (8 color options)
+    - Set captain (click crown icon)
+    - Drag-and-drop players between teams
+    - Move players via dropdown menu
+    - Unassigned players section for checked-in players not in teams
+  - **Real-time Updates:** All tournament features now support real-time sync
+    - SQL migration to enable Supabase Realtime on tournament tables
+    - New hooks: `useActiveMatchRealtime`, `usePlayerStatsRealtime`
+    - Updated all existing hooks with ref pattern to avoid stale closures
+    - Live match scoring, team changes, leaderboard updates sync instantly
+  - Files: `/supabase/migrations/20251210_tournament_system.sql`, `/types/tournament.ts`, `/app/actions/tournament.ts`, `/app/staff/tournament/*`, `/app/app/turneringar/*`, `/components/tournament/*`
+  - Documentation: Updated `/documentation/noisify-database-schema-updated.md`
+
 ## 2025-12-08
 - **Feature: Förmåner (Perks) Staff Administration** - Comprehensive perk management system for staff users
   - **Database Migration:** New tables (`perk_types`, `perk_type_organizations`, `course_perks`, `room_perks`) and modifications to `profile_perks`

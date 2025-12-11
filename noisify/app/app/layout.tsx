@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { Calendar, Home, LogOut, User, Building2, MessageCircle } from "lucide-react";
+import { Calendar, Home, LogOut, User, Building2, MessageCircle, Trophy } from "lucide-react";
 import { signOut } from "@/app/login/actions";
 import NotificationsDropdown from "@/components/notifications-dropdown";
 import TopBar from "@/components/top-bar";
@@ -131,6 +131,11 @@ export default async function AppLayout({
           <Link href="/app/fritidsgardar" className="flex items-center gap-3 px-4 py-3 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors group">
             <Building2 className="w-5 h-5 group-hover:text-indigo-600" />
             <span className="font-medium">Fritidsgårdar</span>
+          </Link>
+          <Link href="/app/turneringar" className="flex items-center gap-3 px-4 py-3 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors group">
+            <Trophy className="w-5 h-5 group-hover:text-indigo-600" />
+            <span className="font-medium">Turneringar</span>
+            <span className="text-[10px] font-semibold bg-indigo-100 text-indigo-600 px-2 py-0.5 rounded-full">NY</span>
           </Link>
           <Link href="/app/profil" className="flex items-center gap-3 px-4 py-3 text-slate-700 rounded-lg hover:bg-slate-50 hover:text-indigo-600 transition-colors group">
             <User className="w-5 h-5 group-hover:text-indigo-600" />

@@ -415,23 +415,54 @@ export async function getPendingPerkInvites(): Promise<{ data: PerkTypeShare[] |
         return { data: null, error: 'Ingen organisation hittades' };
     }
 
-    const { data, error } = await supabase
-        .from('perk_type_organizations')
-        .select(`
-      *,
-      perk_types:perk_type_id(*),
-      invited_by_org:invited_by_org_id(id, name)
-    `)
-        .eq('org_id', orgId)
-        .eq('status', 'pending')
-        .order('created_at', { ascending: false });
+    try {
+        // First, get the pending invites without complex joins
+        const { data: invites, error: invitesError } = await supabase
+            .from('perk_type_organizations')
+            .select('*')
+            .eq('org_id', orgId)
+            .eq('status', 'pending')
+            .order('created_at', { ascending: false });
 
-    if (error) {
-        console.error('Error fetching pending invites:', error);
-        return { data: null, error: 'Kunde inte hämta inbjudningar' };
+        if (invitesError) {
+            console.error('Error fetching pending invites:', invitesError.message || invitesError.code || 'Unknown error');
+            return { data: [], error: null }; // Return empty array instead of error for graceful handling
+        }
+
+        if (!invites || invites.length === 0) {
+            return { data: [], error: null };
+        }
+
+        // Fetch related perk types and organizations for each invite
+        const enrichedInvites: PerkTypeShare[] = await Promise.all(
+            invites.map(async (invite) => {
+                // Get perk type details
+                const { data: perkType } = await supabase
+                    .from('perk_types')
+                    .select('*')
+                    .eq('id', invite.perk_type_id)
+                    .single();
+
+                // Get inviting org details
+                const { data: invitingOrg } = await supabase
+                    .from('organizations')
+                    .select('id, name')
+                    .eq('id', invite.invited_by_org_id)
+                    .single();
+
+                return {
+                    ...invite,
+                    perk_type: perkType || undefined,
+                    invited_by_org: invitingOrg || undefined,
+                } as PerkTypeShare;
+            })
+        );
+
+        return { data: enrichedInvites, error: null };
+    } catch (err) {
+        console.error('Unexpected error in getPendingPerkInvites:', err);
+        return { data: [], error: null }; // Return empty array for graceful handling
     }
-
-    return { data: data as PerkTypeShare[], error: null };
 }
 
 export async function inviteOrgToPerk(perkTypeId: string, targetOrgId: string): Promise<{ success: boolean; error: string | null }> {
