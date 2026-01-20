@@ -13,7 +13,7 @@ export const metadata: Metadata = {
   description: "Utforska alla fritidsgårdar och mötesplatser för unga i Göteborg. Hitta öppettider, kontaktuppgifter och aktiviteter.",
 };
 
-export const revalidate = 0; // Dynamic for search
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function OrganizationsPage({
   searchParams,

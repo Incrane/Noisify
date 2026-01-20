@@ -3,7 +3,7 @@ import { getSelectedOrganization } from "../../actions";
 import { getStaff } from "./actions";
 import PersonalPageClient from "@/components/staff/personal-page-client";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffPersonalPage({
   searchParams,

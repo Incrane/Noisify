@@ -6,7 +6,7 @@ import Image from "next/image";
 import { BookOpen, Clock, Users } from "lucide-react";
 import { getLayoutData } from "@/lib/get-layout-data";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 interface Course {
   course_id: string;

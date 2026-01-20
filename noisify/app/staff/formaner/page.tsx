@@ -9,7 +9,7 @@ export const metadata: Metadata = {
     description: 'Hantera förmåner för din organisation'
 }
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function FormanerPage() {
     const supabase = await createClient()
