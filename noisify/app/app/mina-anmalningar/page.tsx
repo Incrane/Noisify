@@ -3,7 +3,7 @@ import { Calendar, Clock, MapPin, Mail } from "lucide-react";
 import Link from "next/link";
 import InvitationActions from "@/components/app/invitation-actions";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 interface Registration {
   id: string; // Added ID

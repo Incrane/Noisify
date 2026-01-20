@@ -5,7 +5,7 @@ import { MapPin } from "lucide-react";
 import SearchInput from "@/components/search-input";
 import { Suspense } from "react";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function YouthCentersPage({
     searchParams,

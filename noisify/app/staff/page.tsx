@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { Calendar, Users, ClipboardCheck, ArrowRight, Clock, MapPin } from "lucide-react";
 import Link from "next/link";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffDashboardPage() {
   const supabase = await createClient();

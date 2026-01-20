@@ -4,7 +4,7 @@ import InvitationBanner from "@/components/invitation-banner";
 import ActivityListRow from "@/components/activity-list-row";
 import DashboardFavorites from "@/components/dashboard-favorites";
 
-export const revalidate = 0; // Ensure dynamic data
+export const revalidate = 60; // Cache for 60 seconds
 
 interface RegistrationStatus {
   activity_id: string;

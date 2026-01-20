@@ -28,22 +28,31 @@ export default async function AppLayout({
     redirect("/login");
   }
 
-  // Fetch user profile to get alias and other public info
-  const { data: profile } = await supabase
-    .from('profiles')
-    .select('id, alias, city_id, target_subgroup, image_url, requires_alias_change')
-    .eq('user_id', user.id)
-    .maybeSingle();
+  // Parallelize independent user data queries
+  const [
+    { data: profile },
+    { data: privateInfo },
+    { data: staffRoles }
+  ] = await Promise.all([
+    supabase
+      .from('profiles')
+      .select('id, alias, city_id, target_subgroup, image_url, requires_alias_change')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('users_private')
+      .select('first_name, last_name, phone_number, birth_date, gender_id')
+      .eq('user_id', user.id)
+      .maybeSingle(),
+    supabase
+      .from('org_user')
+      .select('role_id')
+      .eq('user_id', user.id)
+      .gte('role_id', 1)
+  ]);
 
   // Check if user needs to change alias
   const requiresAliasChange = profile?.requires_alias_change === true;
-
-  // Fetch private user info
-  const { data: privateInfo } = await supabase
-    .from('users_private')
-    .select('first_name, last_name, phone_number, birth_date, gender_id')
-    .eq('user_id', user.id)
-    .maybeSingle();
 
   // Check if profile is complete
   const isProfileComplete =
@@ -53,13 +62,6 @@ export default async function AppLayout({
     privateInfo?.first_name &&
     privateInfo?.last_name;
 
-  // Check if user is staff (role_id >= 1)
-  const { data: staffRoles } = await supabase
-    .from('org_user')
-    .select('role_id')
-    .eq('user_id', user.id)
-    .gte('role_id', 1);
-
   const isStaff = (staffRoles?.length || 0) > 0;
 
   let cities: any[] = [];
@@ -67,12 +69,19 @@ export default async function AppLayout({
   let avatars: any[] = [];
 
   if (!isProfileComplete) {
-    // Fetch dropdown data only if needed
-    const { data: citiesData } = await supabase.from('cities').select('id, city').order('city');
-    const { data: subgroupsData } = await supabase.from('target_subgroups').select('id, name').order('sort');
+    // Parallelize dropdown data fetching
+    const [
+      { data: citiesData },
+      { data: subgroupsData },
+      avatarsData
+    ] = await Promise.all([
+      supabase.from('cities').select('id, city').order('city'),
+      supabase.from('target_subgroups').select('id, name').order('sort'),
+      getAvatars()
+    ]);
     cities = citiesData || [];
     subgroups = subgroupsData || [];
-    avatars = await getAvatars();
+    avatars = avatarsData;
   }
 
   return (

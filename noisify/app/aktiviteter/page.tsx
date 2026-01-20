@@ -28,7 +28,7 @@ export const metadata: Metadata = {
   description: "Hitta gratis aktiviteter, workshops och events för unga (10-20 år) i Göteborg. Sport, musik, kultur och skapande på fritidsgårdar.",
 };
 
-export const revalidate = 0; // Dynamic for search
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function PublicActivitiesPage({
   searchParams,

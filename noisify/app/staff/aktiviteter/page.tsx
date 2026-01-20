@@ -4,7 +4,7 @@ import { Calendar, Plus, Users, MapPin } from "lucide-react";
 import { getSelectedOrganization } from "../actions";
 import { cn } from "@/lib/utils";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffActivitiesPage(props: {
   searchParams: Promise<{ status?: string }>;

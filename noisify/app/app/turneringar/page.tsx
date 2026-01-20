@@ -1,54 +1,30 @@
-"use client";
-
-import { useEffect, useState, useCallback } from "react";
-import { Trophy, Users, Calendar, ChevronRight, Filter } from "lucide-react";
+import { Trophy, Users, Calendar, ChevronRight } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import Link from "next/link";
 import { getPublicSeasons } from "@/app/actions/tournament";
 import type { SeasonDashboard } from "@/types/tournament";
 import { format } from "date-fns";
 import { sv } from "date-fns/locale";
+import TournamentFilter from "@/components/tournament-filter";
 
-export default function TournamentBrowsePage() {
-  const [seasons, setSeasons] = useState<SeasonDashboard[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [orgFilter, setOrgFilter] = useState<string>("all");
+export const revalidate = 60; // Cache for 60 seconds
 
-  const loadData = useCallback(async () => {
-    const data = await getPublicSeasons(orgFilter === "all" ? undefined : orgFilter);
-    setSeasons(data);
-    setLoading(false);
-  }, [orgFilter]);
+interface TournamentPageProps {
+  searchParams: Promise<{ org?: string }>;
+}
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+export default async function TournamentBrowsePage({ searchParams }: TournamentPageProps) {
+  const params = await searchParams;
+  const orgFilter = params.org;
+
+  // Fetch data on server
+  const seasons = await getPublicSeasons(orgFilter);
 
   // Get unique organizations for filter
   const organizations = Array.from(
     new Set(seasons.map(s => JSON.stringify({ id: s.organization_id, name: s.organization_name })))
   ).map(s => JSON.parse(s));
-
-  if (loading) {
-    return (
-      <div className="space-y-6">
-        <div className="h-8 w-48 bg-slate-200 rounded animate-pulse" />
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {[1, 2, 3, 4].map(i => (
-            <div key={i} className="h-48 bg-slate-200 rounded-xl animate-pulse" />
-          ))}
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-6">
@@ -62,22 +38,7 @@ export default function TournamentBrowsePage() {
 
       {/* Filter */}
       {organizations.length > 1 && (
-        <div className="flex items-center gap-3">
-          <Filter className="w-4 h-4 text-slate-400" />
-          <Select value={orgFilter} onValueChange={setOrgFilter}>
-            <SelectTrigger className="w-64">
-              <SelectValue placeholder="Alla fritidsgårdar" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Alla fritidsgårdar</SelectItem>
-              {organizations.map((org: { id: string; name: string }) => (
-                <SelectItem key={org.id} value={org.id}>
-                  {org.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        </div>
+        <TournamentFilter organizations={organizations} currentFilter={orgFilter} />
       )}
 
       {/* Seasons Grid */}
@@ -123,7 +84,7 @@ function SeasonCard({ season }: { season: SeasonDashboard }) {
               )}
             </div>
           </div>
-          
+
           <div className="flex items-center gap-2 text-sm text-slate-500">
             <span className="font-medium text-indigo-600">{season.organization_name}</span>
           </div>

@@ -2,7 +2,7 @@ import { createClient } from "@/utils/supabase/server";
 import { getSelectedOrganization } from "../actions";
 import RoomManager from "@/components/staff/room-manager";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffRoomsPage() {
   const supabase = await createClient();

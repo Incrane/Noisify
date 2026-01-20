@@ -3,7 +3,7 @@ import { getSelectedOrganization } from "../actions";
 import { getMembers } from "./actions";
 import MembersPageClient from "./members-page-client";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffMembersPage({
   searchParams,

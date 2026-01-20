@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import { Users, Calendar, TrendingUp, BarChart3, UserCheck, UserPlus, Clock, ClipboardCheck } from "lucide-react";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StatisticsPage() {
   const supabase = await createClient();

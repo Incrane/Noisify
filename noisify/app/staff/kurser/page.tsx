@@ -1,7 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import CourseListClient from "@/components/staff/course-list-client";
 
-export const revalidate = 0;
+export const revalidate = 60; // Cache for 60 seconds
 
 export default async function StaffCoursesPage() {
   const supabase = await createClient();
