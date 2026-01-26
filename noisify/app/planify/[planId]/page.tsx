@@ -1,7 +1,9 @@
 import { getPlan } from "../actions"
+import { getActivities } from "./actions"
 import { notFound } from "next/navigation"
 import Link from "next/link"
 import { Calendar, List, Plus, Settings, ChevronLeft } from "lucide-react"
+import CreateActivityDialog from "@/components/planify/create-activity-dialog"
 
 interface PlanPageProps {
   params: Promise<{ planId: string }>
@@ -9,7 +11,10 @@ interface PlanPageProps {
 
 export default async function PlanPage({ params }: PlanPageProps) {
   const { planId } = await params
-  const { plan, error } = await getPlan(planId)
+  const [{ plan, error }, { activities }] = await Promise.all([
+    getPlan(planId),
+    getActivities(planId)
+  ])
 
   if (error || !plan) {
     notFound()
@@ -37,6 +42,22 @@ export default async function PlanPage({ params }: PlanPageProps) {
 
   const dateRange = formatDateRange()
 
+  const formatActivityTime = (startTime: string, endTime: string, isAllDay: boolean) => {
+    if (isAllDay) return "Heldag"
+
+    const start = new Date(startTime)
+    const end = new Date(endTime)
+
+    const timeOptions: Intl.DateTimeFormatOptions = { hour: '2-digit', minute: '2-digit' }
+
+    return `${start.toLocaleTimeString('sv-SE', timeOptions)} - ${end.toLocaleTimeString('sv-SE', timeOptions)}`
+  }
+
+  const formatActivityDate = (startTime: string) => {
+    const date = new Date(startTime)
+    return date.toLocaleDateString('sv-SE', { weekday: 'short', day: 'numeric', month: 'short' })
+  }
+
   return (
     <div className="flex flex-col h-[calc(100vh-64px)]">
       {/* Plan Header */}
@@ -56,10 +77,7 @@ export default async function PlanPage({ params }: PlanPageProps) {
               )}
             </div>
             <div className="flex items-center gap-2">
-              <button className="flex items-center gap-2 px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
-                <Plus className="w-4 h-4" />
-                Ny aktivitet
-              </button>
+              <CreateActivityDialog planId={planId} />
               <Link
                 href={`/planify/${planId}/settings`}
                 className="p-2 hover:bg-slate-100 rounded-lg transition-colors text-slate-500"
@@ -86,23 +104,90 @@ export default async function PlanPage({ params }: PlanPageProps) {
       {/* Calendar/Activities Area */}
       <div className="flex-1 p-6 overflow-auto">
         <div className="max-w-7xl mx-auto">
-          <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
-            <div className="flex justify-center mb-4">
-              <div className="p-4 bg-orange-100 rounded-full">
-                <Calendar className="w-10 h-10 text-orange-500" />
-              </div>
+          {activities.length > 0 ? (
+            <div className="space-y-3">
+              {activities.map((activity) => (
+                <div
+                  key={activity.id}
+                  className="bg-white rounded-xl border border-slate-200 p-4 hover:shadow-md transition-shadow cursor-pointer"
+                >
+                  <div className="flex items-start gap-4">
+                    {/* Category color bar */}
+                    <div
+                      className="w-1 h-16 rounded-full flex-shrink-0"
+                      style={{ backgroundColor: activity.category?.color || '#6B7280' }}
+                    />
+
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-start justify-between gap-4">
+                        <div>
+                          <h3 className="font-semibold text-slate-900">{activity.title}</h3>
+                          <p className="text-sm text-slate-500 mt-0.5">
+                            {formatActivityDate(activity.start_time)} • {formatActivityTime(activity.start_time, activity.end_time, activity.is_all_day)}
+                          </p>
+                          {activity.location && (
+                            <p className="text-sm text-slate-400 mt-1">{activity.location}</p>
+                          )}
+                        </div>
+
+                        <div className="flex items-center gap-2 flex-shrink-0">
+                          {activity.category && (
+                            <span
+                              className="px-2 py-1 text-xs font-medium rounded-full"
+                              style={{
+                                backgroundColor: `${activity.category.color}20`,
+                                color: activity.category.color
+                              }}
+                            >
+                              {activity.category.name}
+                            </span>
+                          )}
+                          <span className={`px-2 py-1 text-xs font-medium rounded-full ${
+                            activity.status === 'published'
+                              ? 'bg-green-100 text-green-700'
+                              : activity.status === 'ready'
+                              ? 'bg-blue-100 text-blue-700'
+                              : 'bg-slate-100 text-slate-600'
+                          }`}>
+                            {activity.status === 'published' ? 'Publicerad' : activity.status === 'ready' ? 'Klar' : 'Utkast'}
+                          </span>
+                        </div>
+                      </div>
+
+                      {activity.description && (
+                        <p className="text-sm text-slate-600 mt-2 line-clamp-2">
+                          {activity.description}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              ))}
             </div>
-            <h2 className="text-xl font-semibold text-slate-900 mb-2">
-              Inga aktiviteter ännu
-            </h2>
-            <p className="text-slate-500 max-w-sm mx-auto mb-6">
-              Skapa din första aktivitet för att börja planera {plan.name}.
-            </p>
-            <button className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
-              <Plus className="w-5 h-5" />
-              Skapa aktivitet
-            </button>
-          </div>
+          ) : (
+            <div className="bg-white rounded-2xl border border-slate-200 p-12 text-center">
+              <div className="flex justify-center mb-4">
+                <div className="p-4 bg-orange-100 rounded-full">
+                  <Calendar className="w-10 h-10 text-orange-500" />
+                </div>
+              </div>
+              <h2 className="text-xl font-semibold text-slate-900 mb-2">
+                Inga aktiviteter ännu
+              </h2>
+              <p className="text-slate-500 max-w-sm mx-auto mb-6">
+                Skapa din första aktivitet för att börja planera {plan.name}.
+              </p>
+              <CreateActivityDialog
+                planId={planId}
+                trigger={
+                  <button className="inline-flex items-center gap-2 px-6 py-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg font-medium transition-colors">
+                    <Plus className="w-5 h-5" />
+                    Skapa aktivitet
+                  </button>
+                }
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
