@@ -1,6 +1,6 @@
 # Product Requirements Document: Planify
 
-**Version:** 2.0
+**Version:** 3.0
 **Date:** 2026-01-26
 **Author:** Development Team
 **Status:** Draft
@@ -188,62 +188,662 @@ Users access Planify through the "Applikationer" (Applications) dropdown in the 
 
 ---
 
-## 4. Permission System
+## 4. Granular Permission System
 
-### 4.1 Permission Levels
+### 4.1 Overview
 
-| Permission | Owner | Admin | Editor | Viewer | Guest |
-|------------|-------|-------|--------|--------|-------|
-| View plan & activities | ✓ | ✓ | ✓ | ✓ | ✓ |
-| Create activities | ✓ | ✓ | ✓ | - | - |
-| Edit activities | ✓ | ✓ | ✓ | - | - |
-| Delete activities | ✓ | ✓ | ✓* | - | - |
-| Publish to Noisify | ✓ | ✓ | - | - | - |
-| Unpublish from Noisify | ✓ | ✓ | - | - | - |
-| Manage plan settings | ✓ | ✓ | - | - | - |
-| Share plan (create links) | ✓ | ✓ | - | - | - |
-| Invite members | ✓ | ✓ | - | - | - |
-| Remove members | ✓ | ✓** | - | - | - |
-| Delete plan | ✓ | - | - | - | - |
-| Transfer ownership | ✓ | - | - | - | - |
-| Manage templates | ✓ | ✓ | ✓ | - | - |
-| View staff schedules | ✓ | ✓ | ✓ | ✓ | - |
-| Edit own availability | ✓ | ✓ | ✓ | ✓ | - |
-| Edit others' availability | ✓ | ✓ | - | - | - |
+Planify uses a **granular permission system** where plan owners and organization admins can create custom **Permission Sets** that define exactly what users can do. This provides flexibility for different collaboration scenarios.
 
-*Editors can only delete activities they created
-**Admins cannot remove the owner
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    PERMISSION ARCHITECTURE                       │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  WHO CAN MANAGE PERMISSIONS?                                    │
+│  ├── Plan Owner (always)                                        │
+│  └── Org Staff with role_id >= 3 (for plans in their org)      │
+│                                                                 │
+│  PERMISSION SETS                                                │
+│  ├── System Defaults (read-only, available to all plans)       │
+│  │   ├── "Full Access" (like owner, minus ownership transfer)  │
+│  │   ├── "Manager" (edit all, publish, manage members)         │
+│  │   ├── "Contributor" (create, edit own, view all)            │
+│  │   ├── "Viewer" (view only)                                  │
+│  │   └── "Guest" (view only, limited UI, no sensitive data)    │
+│  │                                                              │
+│  └── Custom Sets (per plan or per organization)                │
+│      └── Created by owner/org admins with granular permissions │
+│                                                                 │
+│  SHARING TYPES                                                  │
+│  ├── Within Organization (invite existing staff by profile)    │
+│  │   └── Assign any permission set                             │
+│  ├── External Invite (invite by email, creates account)        │
+│  │   └── Assign any permission set (pending until accepted)    │
+│  └── Public Link (anonymous access, no account)                │
+│      └── Assign view-only or custom guest permission set       │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
 
-### 4.2 Plan Membership Model
+### 4.2 Granular Permissions
+
+All available permissions that can be combined into Permission Sets:
+
+#### 4.2.1 Activity Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `activity.create` | Create new activities | - |
+| `activity.view_own` | View activities created by self | Minimum for any access |
+| `activity.view_all` | View all activities in the plan | - |
+| `activity.edit_own` | Edit activities created by self | - |
+| `activity.edit_all` | Edit any activity | Overrides edit_own |
+| `activity.delete_own` | Delete activities created by self | - |
+| `activity.delete_all` | Delete any activity | Overrides delete_own |
+| `activity.publish` | Publish activities to Noisify | Requires Noisify staff access |
+| `activity.unpublish` | Unpublish/unlink from Noisify | - |
+| `activity.duplicate` | Duplicate existing activities | - |
+
+#### 4.2.2 Plan Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `plan.view` | View plan details and metadata | Required for any access |
+| `plan.edit` | Edit plan name, description, cover, dates | - |
+| `plan.delete` | Delete the entire plan | Dangerous, usually owner-only |
+| `plan.manage_members` | Invite/remove plan members | - |
+| `plan.manage_sharing` | Create/revoke public share links | - |
+| `plan.manage_permissions` | Create/edit custom permission sets | - |
+| `plan.transfer_ownership` | Transfer plan ownership | Owner-only |
+
+#### 4.2.3 Template Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `template.view` | View available templates | - |
+| `template.create` | Create new templates | - |
+| `template.edit_own` | Edit templates created by self | - |
+| `template.edit_all` | Edit any template | - |
+| `template.delete_own` | Delete templates created by self | - |
+| `template.delete_all` | Delete any template | - |
+| `template.use` | Use templates to create activities | Usually paired with activity.create |
+
+#### 4.2.4 Schedule Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `schedule.view_own` | View own schedule and assignments | - |
+| `schedule.view_team` | View team schedule and availability | - |
+| `schedule.edit_own` | Edit own availability | - |
+| `schedule.edit_team` | Edit any staff's availability | Admin feature |
+| `schedule.request_timeoff` | Submit time-off requests | - |
+| `schedule.approve_timeoff` | Approve/reject time-off requests | Manager feature |
+
+#### 4.2.5 Assignment Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `assignment.view` | View activity assignments | - |
+| `assignment.assign_self` | Assign self to activities | - |
+| `assignment.assign_others` | Assign other staff to activities | - |
+| `assignment.remove_self` | Remove self from activities | - |
+| `assignment.remove_others` | Remove others from activities | - |
+
+#### 4.2.6 Sync Permissions
+
+| Permission Key | Description | Notes |
+|----------------|-------------|-------|
+| `sync.view_status` | View sync status with Noisify | - |
+| `sync.trigger` | Manually trigger sync | - |
+| `sync.resolve_conflicts` | Resolve sync conflicts | - |
+
+### 4.3 System Default Permission Sets
+
+These are read-only, system-provided permission sets available to all plans:
+
+#### Full Access
+```json
+{
+  "name": "Full Access",
+  "name_sv": "Full åtkomst",
+  "description": "Complete control over the plan (except ownership transfer)",
+  "is_system": true,
+  "permissions": [
+    "activity.*",
+    "plan.view", "plan.edit", "plan.manage_members",
+    "plan.manage_sharing", "plan.manage_permissions",
+    "template.*",
+    "schedule.*",
+    "assignment.*",
+    "sync.*"
+  ]
+}
+```
+
+#### Manager
+```json
+{
+  "name": "Manager",
+  "name_sv": "Ansvarig",
+  "description": "Can manage activities and members, publish to Noisify",
+  "is_system": true,
+  "permissions": [
+    "activity.create", "activity.view_all", "activity.edit_all",
+    "activity.delete_all", "activity.publish", "activity.unpublish",
+    "activity.duplicate",
+    "plan.view", "plan.edit", "plan.manage_members", "plan.manage_sharing",
+    "template.*",
+    "schedule.view_own", "schedule.view_team", "schedule.edit_own",
+    "schedule.approve_timeoff",
+    "assignment.*",
+    "sync.*"
+  ]
+}
+```
+
+#### Contributor
+```json
+{
+  "name": "Contributor",
+  "name_sv": "Bidragsgivare",
+  "description": "Can create and edit own activities, view all",
+  "is_system": true,
+  "permissions": [
+    "activity.create", "activity.view_all", "activity.edit_own",
+    "activity.delete_own", "activity.duplicate",
+    "plan.view",
+    "template.view", "template.create", "template.edit_own",
+    "template.delete_own", "template.use",
+    "schedule.view_own", "schedule.view_team", "schedule.edit_own",
+    "schedule.request_timeoff",
+    "assignment.view", "assignment.assign_self", "assignment.remove_self"
+  ]
+}
+```
+
+#### Viewer
+```json
+{
+  "name": "Viewer",
+  "name_sv": "Visare",
+  "description": "Read-only access to plan and activities",
+  "is_system": true,
+  "permissions": [
+    "activity.view_all",
+    "plan.view",
+    "template.view",
+    "schedule.view_own",
+    "assignment.view",
+    "sync.view_status"
+  ]
+}
+```
+
+#### Guest
+```json
+{
+  "name": "Guest",
+  "name_sv": "Gäst",
+  "description": "Limited view access for external users (no sensitive data)",
+  "is_system": true,
+  "is_guest": true,
+  "permissions": [
+    "activity.view_all",
+    "plan.view"
+  ],
+  "restrictions": {
+    "hide_contact_info": true,
+    "hide_internal_notes": true,
+    "hide_assignments": true,
+    "limited_ui": true
+  }
+}
+```
+
+### 4.4 Custom Permission Sets
+
+Plan owners and org admins (role_id >= 3) can create custom permission sets:
+
+#### 4.4.1 Example: "Activity Creator"
+A user who can create activities but only edit/delete their own:
+
+```json
+{
+  "name": "Activity Creator",
+  "name_sv": "Aktivitetsskapare",
+  "description": "Can create activities, edit/delete only own",
+  "plan_id": "uuid-of-plan",
+  "permissions": [
+    "activity.create", "activity.view_all", "activity.edit_own",
+    "activity.delete_own", "activity.duplicate",
+    "plan.view",
+    "template.view", "template.use",
+    "schedule.view_own", "schedule.edit_own",
+    "assignment.view", "assignment.assign_self"
+  ]
+}
+```
+
+#### 4.4.2 Example: "External Partner"
+For collaborators from partner organizations:
+
+```json
+{
+  "name": "External Partner",
+  "name_sv": "Extern partner",
+  "description": "Partner organization with limited edit access",
+  "plan_id": "uuid-of-plan",
+  "permissions": [
+    "activity.create", "activity.view_all", "activity.edit_own",
+    "plan.view",
+    "template.view", "template.use",
+    "assignment.view"
+  ],
+  "restrictions": {
+    "hide_internal_notes": true
+  }
+}
+```
+
+#### 4.4.3 Example: "Publisher Only"
+Can only publish, not create or edit:
+
+```json
+{
+  "name": "Publisher Only",
+  "name_sv": "Endast publicerare",
+  "description": "Can review and publish activities to Noisify",
+  "plan_id": "uuid-of-plan",
+  "permissions": [
+    "activity.view_all", "activity.publish", "activity.unpublish",
+    "plan.view",
+    "sync.*"
+  ]
+}
+```
+
+### 4.5 Permission Management UI
+
+#### 4.5.1 Plan Settings → Permissions Tab
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Planinställningar                                            ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│  Allmänt │ Medlemmar │ Behörigheter │ Delning                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Behörighetsuppsättningar                    [+ Skapa ny]       │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ SYSTEM (kan inte redigeras)                              │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 🔒 Full åtkomst      Komplett kontroll över planen      │   │
+│  │ 🔒 Ansvarig          Hantera aktiviteter och medlemmar   │   │
+│  │ 🔒 Bidragsgivare     Skapa och redigera egna aktiviteter │   │
+│  │ 🔒 Visare            Endast läsåtkomst                   │   │
+│  │ 🔒 Gäst              Begränsad vy för externa användare  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ANPASSADE                                                │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ ✏️ Aktivitetsskapare  Kan skapa, redigera egna    [✏️][🗑️]│   │
+│  │ ✏️ Extern partner     Partner med begränsad åtkomst[✏️][🗑️]│   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 4.5.2 Create/Edit Permission Set Dialog
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Skapa behörighetsuppsättning                                 ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Namn: [________________________]                               │
+│  Beskrivning: [________________________]                        │
+│                                                                 │
+│  Börja från mall: [Bidragsgivare ▼]                            │
+│                                                                 │
+│  ───────────────────────────────────────────────────────────── │
+│                                                                 │
+│  AKTIVITETER                                                    │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ☑️ Skapa aktiviteter                                     │   │
+│  │ ☑️ Visa egna aktiviteter                                 │   │
+│  │ ☑️ Visa alla aktiviteter                                 │   │
+│  │ ☑️ Redigera egna aktiviteter                             │   │
+│  │ ☐ Redigera alla aktiviteter                              │   │
+│  │ ☑️ Ta bort egna aktiviteter                              │   │
+│  │ ☐ Ta bort alla aktiviteter                               │   │
+│  │ ☐ Publicera till Noisify                                 │   │
+│  │ ☐ Avpublicera från Noisify                               │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  PLAN                                                           │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ☑️ Visa plan                                             │   │
+│  │ ☐ Redigera plan                                          │   │
+│  │ ☐ Hantera medlemmar                                      │   │
+│  │ ☐ Hantera delning                                        │   │
+│  │ ☐ Hantera behörigheter                                   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  MALLAR                                                         │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ☑️ Visa mallar                                           │   │
+│  │ ☑️ Skapa mallar                                          │   │
+│  │ ☑️ Använda mallar                                        │   │
+│  │ ...                                                      │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  BEGRÄNSNINGAR (för känslig data)                              │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ☐ Dölj kontaktinformation                                │   │
+│  │ ☐ Dölj interna anteckningar                              │   │
+│  │ ☐ Dölj tilldelningar                                     │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│                              [Avbryt]  [Spara]                  │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.6 Member Management with Permissions
+
+#### 4.6.1 Invite Member Flow
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Bjud in medlem                                               ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Bjud in från:                                                  │
+│  ┌─────────────────┐  ┌─────────────────┐                      │
+│  │  Organisation   │  │  E-post         │                      │
+│  │  (befintlig)    │  │  (extern)       │                      │
+│  └─────────────────┘  └─────────────────┘                      │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  [ORG TAB SELECTED]                                             │
+│                                                                 │
+│  Sök personal: [__________________] 🔍                          │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ 👤 Maria Andersson       maria@org.se        [+ Lägg till]│   │
+│  │ 👤 Johan Eriksson        johan@org.se        [+ Lägg till]│   │
+│  │ 👤 Emma Lindberg         emma@org.se         ✓ Redan med  │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Behörighetsuppsättning: [Bidragsgivare ▼]                     │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ℹ️ Bidragsgivare kan:                                    │   │
+│  │   • Skapa och redigera egna aktiviteter                 │   │
+│  │   • Visa alla aktiviteter                               │   │
+│  │   • Hantera egen tillgänglighet                         │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│                              [Avbryt]  [Bjud in]                │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+#### 4.6.2 Members List with Permissions
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Planinställningar                                            ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│  Allmänt │ Medlemmar │ Behörigheter │ Delning                   │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Medlemmar (5)                                   [+ Bjud in]    │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ 👤 Rafael (du)              Ägare           👑            │   │
+│  │    rafael@org.se            Full åtkomst                 │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 👤 Maria Andersson          Intern                       │   │
+│  │    maria@org.se             [Ansvarig ▼]          [🗑️]   │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 👤 Johan Eriksson           Intern                       │   │
+│  │    johan@org.se             [Bidragsgivare ▼]     [🗑️]   │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 👤 Emma Lindberg            Intern                       │   │
+│  │    emma@org.se              [Aktivitetsskapare ▼] [🗑️]   │   │
+│  ├─────────────────────────────────────────────────────────┤   │
+│  │ 👤 Anders Partner           Extern          ⏳ Väntar     │   │
+│  │    anders@partner.se        [Extern partner ▼]    [🗑️]   │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.7 Share Links with Permission Sets
+
+Share links can now be assigned a permission set (typically Guest or a custom guest set):
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│ Dela plan                                                    ✕  │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│  Offentlig länk                                                 │
+│                                                                 │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ https://app.noisify.se/planify/view/abc123xyz    [📋]    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Behörighet: [Gäst ▼]                                          │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ ℹ️ Gäster kan:                                           │   │
+│  │   • Visa aktiviteter (utan kontaktinfo)                 │   │
+│  │   • Visa kalender och lista                             │   │
+│  │   • INTE se interna anteckningar eller tilldelningar    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+│  Avancerade inställningar:                                      │
+│  ☐ Lösenordsskydda länken                                      │
+│  ☐ Sätt utgångsdatum  [____________]                           │
+│                                                                 │
+│  ─────────────────────────────────────────────────────────────  │
+│                                                                 │
+│  Aktiva länkar (2)                                              │
+│  ┌─────────────────────────────────────────────────────────┐   │
+│  │ abc123xyz   Gäst      23 visningar   Aldrig    [🗑️]     │   │
+│  │ def456uvw   Gäst      5 visningar    Om 7 dagar [🗑️]    │   │
+│  └─────────────────────────────────────────────────────────┘   │
+│                                                                 │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### 4.8 Data Models
+
+#### 4.8.1 Permission Set Model
+
+```typescript
+interface PermissionSet {
+  id: string;
+
+  // Scope - system sets have no plan_id/org_id
+  plan_id?: string;              // Custom set for specific plan
+  org_id?: string;               // Custom set for entire organization
+
+  // Metadata
+  name: string;
+  name_sv: string;               // Swedish name
+  description?: string;
+  is_system: boolean;            // System default (read-only)
+  is_guest: boolean;             // Designed for guest/external access
+
+  // Permissions array
+  permissions: string[];         // e.g., ["activity.create", "activity.view_all"]
+
+  // Restrictions for sensitive data
+  restrictions?: {
+    hide_contact_info?: boolean;
+    hide_internal_notes?: boolean;
+    hide_assignments?: boolean;
+    hide_financials?: boolean;
+    limited_ui?: boolean;
+  };
+
+  // Audit
+  created_by?: string;           // NULL for system sets
+  created_at: Date;
+  updated_at: Date;
+}
+```
+
+#### 4.8.2 Plan Member Model (Updated)
 
 ```typescript
 interface PlanMember {
   id: string;
   plan_id: string;
-  profile_id: string;           // NULL for guests
-  email?: string;               // For invitation tracking
-  role: 'owner' | 'admin' | 'editor' | 'viewer';
-  invited_by: string;           // Profile UUID
+
+  // User identification
+  profile_id?: string;           // NULL for pending external invites
+  email: string;                 // Always stored for reference
+
+  // Permission
+  permission_set_id: string;     // References permission set
+
+  // Membership type
+  membership_type: 'internal' | 'external';  // From org or invited by email
+
+  // Invitation tracking
+  invited_by: string;            // Profile UUID
   invited_at: Date;
   accepted_at?: Date;
   status: 'pending' | 'active' | 'revoked';
+
+  // Special flags
+  is_owner: boolean;             // Plan owner (cannot be removed, always full access)
 }
 ```
 
-### 4.3 Share Links Model
+#### 4.8.3 Share Link Model (Updated)
 
 ```typescript
 interface PlanShareLink {
   id: string;
   plan_id: string;
-  token: string;                // Unique URL token (e.g., "abc123xyz")
-  created_by: string;           // Profile UUID
-  created_at: Date;
-  expires_at?: Date;            // Optional expiration
-  password_hash?: string;       // Optional password protection
+
+  // Access
+  token: string;                 // Unique URL token
+  permission_set_id: string;     // Permission set for guests using this link
+
+  // Security
+  password_hash?: string;        // Optional password protection
+  expires_at?: Date;             // Optional expiration
+
+  // Status
   is_active: boolean;
-  access_count: number;         // Track usage
+
+  // Analytics
+  access_count: number;
   last_accessed_at?: Date;
+
+  // Audit
+  created_by: string;
+  created_at: Date;
+}
+```
+
+### 4.9 Permission Checking Logic
+
+```typescript
+// Server-side permission check utility
+async function checkPermission(
+  userId: string,
+  planId: string,
+  permission: string
+): Promise<boolean> {
+  // 1. Get user's membership in this plan
+  const member = await getPlanMember(planId, userId);
+  if (!member || member.status !== 'active') {
+    return false;
+  }
+
+  // 2. Plan owner always has full access
+  if (member.is_owner) {
+    return true;
+  }
+
+  // 3. Get the permission set
+  const permissionSet = await getPermissionSet(member.permission_set_id);
+
+  // 4. Check if permission is granted
+  return hasPermission(permissionSet.permissions, permission);
+}
+
+// Check permission with wildcard support
+function hasPermission(permissions: string[], required: string): boolean {
+  // Direct match
+  if (permissions.includes(required)) return true;
+
+  // Wildcard match (e.g., "activity.*" matches "activity.create")
+  const category = required.split('.')[0];
+  if (permissions.includes(`${category}.*`)) return true;
+
+  // Full wildcard
+  if (permissions.includes('*')) return true;
+
+  return false;
+}
+
+// Check "own" vs "all" permissions
+async function canEditActivity(
+  userId: string,
+  planId: string,
+  activityId: string
+): Promise<boolean> {
+  const activity = await getActivity(activityId);
+
+  // Check if user can edit all
+  if (await checkPermission(userId, planId, 'activity.edit_all')) {
+    return true;
+  }
+
+  // Check if user can edit own and is creator
+  if (await checkPermission(userId, planId, 'activity.edit_own')) {
+    return activity.created_by === userId;
+  }
+
+  return false;
+}
+```
+
+### 4.10 Who Can Manage Permissions
+
+Permission management (`plan.manage_permissions`) is restricted to:
+
+1. **Plan Owner** - Always has full control
+2. **Organization Staff with `role_id >= 3`** - Can manage permissions for any plan in their organization
+
+```typescript
+async function canManagePermissions(
+  userId: string,
+  planId: string
+): Promise<boolean> {
+  // Check if plan owner
+  const member = await getPlanMember(planId, userId);
+  if (member?.is_owner) {
+    return true;
+  }
+
+  // Check if org admin (role_id >= 3)
+  const plan = await getPlan(planId);
+  const orgUser = await getOrgUser(plan.org_id, userId);
+  if (orgUser?.role_id >= 3) {
+    return true;
+  }
+
+  // Check if has permission via permission set
+  return checkPermission(userId, planId, 'plan.manage_permissions');
 }
 ```
 
@@ -768,42 +1368,101 @@ CREATE TABLE planify_plans (
 );
 
 -- =====================================================
--- PLAN MEMBERS (Permissions)
+-- PERMISSION SETS (Granular Permissions)
 -- =====================================================
 
-CREATE TYPE planify_role AS ENUM ('owner', 'admin', 'editor', 'viewer');
 CREATE TYPE planify_member_status AS ENUM ('pending', 'active', 'revoked');
+CREATE TYPE planify_membership_type AS ENUM ('internal', 'external');
+
+-- Permission Sets define what users can do
+CREATE TABLE planify_permission_sets (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+
+  -- Scope: NULL = system default, org_id = org-wide, plan_id = plan-specific
+  org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
+  plan_id UUID REFERENCES planify_plans(id) ON DELETE CASCADE,
+
+  -- Metadata
+  name TEXT NOT NULL,
+  name_sv TEXT NOT NULL,         -- Swedish name
+  description TEXT,
+  is_system BOOLEAN DEFAULT FALSE,  -- System defaults are read-only
+  is_guest BOOLEAN DEFAULT FALSE,   -- Designed for guest/external access
+
+  -- Permissions array (e.g., ["activity.create", "activity.view_all"])
+  permissions TEXT[] NOT NULL DEFAULT '{}',
+
+  -- Restrictions for sensitive data hiding
+  restrictions JSONB DEFAULT '{}',
+  -- Example: {"hide_contact_info": true, "hide_internal_notes": true}
+
+  -- Audit
+  created_by UUID REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW(),
+  updated_at TIMESTAMPTZ DEFAULT NOW(),
+
+  -- Ensure unique names within scope
+  UNIQUE(org_id, plan_id, name)
+);
+
+-- =====================================================
+-- PLAN MEMBERS (with Permission Sets)
+-- =====================================================
 
 CREATE TABLE planify_plan_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   plan_id UUID NOT NULL REFERENCES planify_plans(id) ON DELETE CASCADE,
+
+  -- User identification
   profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  email TEXT,                    -- For pending invitations
-  role planify_role NOT NULL DEFAULT 'viewer',
+  email TEXT NOT NULL,           -- Always stored for reference
+
+  -- Permission set reference
+  permission_set_id UUID NOT NULL REFERENCES planify_permission_sets(id),
+
+  -- Membership type
+  membership_type planify_membership_type NOT NULL DEFAULT 'internal',
+
+  -- Special flags
+  is_owner BOOLEAN DEFAULT FALSE,  -- Plan owner (always full access)
+
+  -- Invitation tracking
   invited_by UUID REFERENCES profiles(id),
   invited_at TIMESTAMPTZ DEFAULT NOW(),
   accepted_at TIMESTAMPTZ,
   status planify_member_status DEFAULT 'pending',
 
+  -- Constraints
   UNIQUE(plan_id, profile_id),
   UNIQUE(plan_id, email)
 );
 
 -- =====================================================
--- SHARE LINKS (Guest Access)
+-- SHARE LINKS (Guest Access with Permission Sets)
 -- =====================================================
 
 CREATE TABLE planify_share_links (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   plan_id UUID NOT NULL REFERENCES planify_plans(id) ON DELETE CASCADE,
+
+  -- Access
   token TEXT NOT NULL UNIQUE,    -- URL token
-  created_by UUID NOT NULL REFERENCES profiles(id),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  expires_at TIMESTAMPTZ,
+  permission_set_id UUID NOT NULL REFERENCES planify_permission_sets(id),
+
+  -- Security
   password_hash TEXT,            -- Optional password
+  expires_at TIMESTAMPTZ,        -- Optional expiration
+
+  -- Status
   is_active BOOLEAN DEFAULT TRUE,
+
+  -- Analytics
   access_count INTEGER DEFAULT 0,
-  last_accessed_at TIMESTAMPTZ
+  last_accessed_at TIMESTAMPTZ,
+
+  -- Audit
+  created_by UUID NOT NULL REFERENCES profiles(id),
+  created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
 -- =====================================================
@@ -971,16 +1630,23 @@ CREATE TABLE planify_sync_log (
 -- =====================================================
 
 CREATE INDEX idx_planify_plans_org ON planify_plans(org_id);
+CREATE INDEX idx_planify_permission_sets_org ON planify_permission_sets(org_id);
+CREATE INDEX idx_planify_permission_sets_plan ON planify_permission_sets(plan_id);
+CREATE INDEX idx_planify_permission_sets_system ON planify_permission_sets(is_system) WHERE is_system = TRUE;
 CREATE INDEX idx_planify_plan_members_plan ON planify_plan_members(plan_id);
 CREATE INDEX idx_planify_plan_members_profile ON planify_plan_members(profile_id);
+CREATE INDEX idx_planify_plan_members_permission_set ON planify_plan_members(permission_set_id);
 CREATE INDEX idx_planify_share_links_token ON planify_share_links(token);
 CREATE INDEX idx_planify_share_links_plan ON planify_share_links(plan_id);
+CREATE INDEX idx_planify_share_links_permission_set ON planify_share_links(permission_set_id);
 CREATE INDEX idx_planify_activities_plan ON planify_activities(plan_id);
 CREATE INDEX idx_planify_activities_dates ON planify_activities(start_date, end_date);
 CREATE INDEX idx_planify_activities_noisify ON planify_activities(noisify_activity_id);
+CREATE INDEX idx_planify_activities_created_by ON planify_activities(created_by);
 CREATE INDEX idx_planify_activity_assignments_activity ON planify_activity_assignments(activity_id);
 CREATE INDEX idx_planify_activity_assignments_profile ON planify_activity_assignments(profile_id);
 CREATE INDEX idx_planify_templates_org ON planify_templates(org_id);
+CREATE INDEX idx_planify_templates_created_by ON planify_templates(created_by);
 CREATE INDEX idx_planify_staff_availability_profile ON planify_staff_availability(profile_id);
 CREATE INDEX idx_planify_staff_availability_org ON planify_staff_availability(org_id);
 CREATE INDEX idx_planify_staff_availability_dates ON planify_staff_availability(start_date, end_date);
@@ -991,6 +1657,7 @@ CREATE INDEX idx_planify_categories_org ON planify_categories(org_id);
 -- =====================================================
 
 ALTER TABLE planify_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE planify_permission_sets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planify_plan_members ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planify_share_links ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planify_activities ENABLE ROW LEVEL SECURITY;
@@ -1000,7 +1667,157 @@ ALTER TABLE planify_staff_availability ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planify_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE planify_sync_log ENABLE ROW LEVEL SECURITY;
 
--- Plans: Members can read, owners/admins can write
+-- =====================================================
+-- PERMISSION CHECKING FUNCTION
+-- =====================================================
+
+-- Function to check if user has a specific permission in a plan
+CREATE OR REPLACE FUNCTION has_plan_permission(
+  p_plan_id UUID,
+  p_user_id UUID,
+  p_permission TEXT
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_permissions TEXT[];
+  v_is_owner BOOLEAN;
+BEGIN
+  -- Get member's permission set and owner status
+  SELECT ps.permissions, pm.is_owner
+  INTO v_permissions, v_is_owner
+  FROM planify_plan_members pm
+  JOIN planify_permission_sets ps ON ps.id = pm.permission_set_id
+  WHERE pm.plan_id = p_plan_id
+  AND pm.profile_id = p_user_id
+  AND pm.status = 'active';
+
+  -- Not a member
+  IF v_permissions IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Owner always has full access
+  IF v_is_owner THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check direct permission
+  IF p_permission = ANY(v_permissions) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check wildcard (e.g., "activity.*" matches "activity.create")
+  IF (split_part(p_permission, '.', 1) || '.*') = ANY(v_permissions) THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check full wildcard
+  IF '*' = ANY(v_permissions) THEN
+    RETURN TRUE;
+  END IF;
+
+  RETURN FALSE;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- Function to check if user can manage permissions (owner or org admin role_id >= 3)
+CREATE OR REPLACE FUNCTION can_manage_plan_permissions(
+  p_plan_id UUID,
+  p_user_id UUID
+) RETURNS BOOLEAN AS $$
+DECLARE
+  v_org_id UUID;
+  v_is_owner BOOLEAN;
+  v_org_role_id INTEGER;
+BEGIN
+  -- Check if plan owner
+  SELECT pm.is_owner INTO v_is_owner
+  FROM planify_plan_members pm
+  WHERE pm.plan_id = p_plan_id
+  AND pm.profile_id = p_user_id
+  AND pm.status = 'active';
+
+  IF v_is_owner THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check if org admin (role_id >= 3)
+  SELECT p.org_id INTO v_org_id
+  FROM planify_plans p
+  WHERE p.id = p_plan_id;
+
+  SELECT ou.role_id INTO v_org_role_id
+  FROM org_user ou
+  WHERE ou.org_id = v_org_id
+  AND ou.profile_id = p_user_id;
+
+  IF v_org_role_id >= 3 THEN
+    RETURN TRUE;
+  END IF;
+
+  -- Check via permission set
+  RETURN has_plan_permission(p_plan_id, p_user_id, 'plan.manage_permissions');
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
+
+-- =====================================================
+-- PERMISSION SETS POLICIES
+-- =====================================================
+
+-- Everyone can read system permission sets
+CREATE POLICY "Anyone can read system permission sets"
+  ON planify_permission_sets FOR SELECT
+  USING (is_system = TRUE);
+
+-- Plan members can read permission sets for their plans
+CREATE POLICY "Plan members can read plan permission sets"
+  ON planify_permission_sets FOR SELECT
+  USING (
+    plan_id IS NOT NULL AND
+    EXISTS (
+      SELECT 1 FROM planify_plan_members pm
+      WHERE pm.plan_id = planify_permission_sets.plan_id
+      AND pm.profile_id = auth.uid()
+      AND pm.status = 'active'
+    )
+  );
+
+-- Org staff can read org-level permission sets
+CREATE POLICY "Org staff can read org permission sets"
+  ON planify_permission_sets FOR SELECT
+  USING (
+    org_id IS NOT NULL AND plan_id IS NULL AND
+    EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_permission_sets.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 1
+    )
+  );
+
+-- Permission managers can create/update/delete custom permission sets
+CREATE POLICY "Permission managers can manage custom sets"
+  ON planify_permission_sets FOR ALL
+  USING (
+    is_system = FALSE AND
+    (
+      -- Plan-level: check plan permission management
+      (plan_id IS NOT NULL AND can_manage_plan_permissions(plan_id, auth.uid()))
+      OR
+      -- Org-level: org admins (role_id >= 3)
+      (org_id IS NOT NULL AND plan_id IS NULL AND EXISTS (
+        SELECT 1 FROM org_user
+        WHERE org_user.org_id = planify_permission_sets.org_id
+        AND org_user.profile_id = auth.uid()
+        AND org_user.role_id >= 3
+      ))
+    )
+  );
+
+-- =====================================================
+-- PLANS POLICIES (Updated for granular permissions)
+-- =====================================================
+
+-- Plan members can read plans (need plan.view permission)
 CREATE POLICY "Plan members can read plans"
   ON planify_plans FOR SELECT
   USING (
@@ -1012,18 +1829,12 @@ CREATE POLICY "Plan members can read plans"
     )
   );
 
-CREATE POLICY "Plan owners/admins can update plans"
+-- Users with plan.edit permission can update plans
+CREATE POLICY "Users with plan.edit can update plans"
   ON planify_plans FOR UPDATE
-  USING (
-    EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_plans.id
-      AND pm.profile_id = auth.uid()
-      AND pm.role IN ('owner', 'admin')
-      AND pm.status = 'active'
-    )
-  );
+  USING (has_plan_permission(id, auth.uid(), 'plan.edit'));
 
+-- Staff can create plans in their org
 CREATE POLICY "Staff can create plans"
   ON planify_plans FOR INSERT
   WITH CHECK (
@@ -1035,50 +1846,150 @@ CREATE POLICY "Staff can create plans"
     )
   );
 
-CREATE POLICY "Plan owners can delete plans"
+-- Users with plan.delete permission can delete plans
+CREATE POLICY "Users with plan.delete can delete plans"
   ON planify_plans FOR DELETE
-  USING (
-    EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_plans.id
-      AND pm.profile_id = auth.uid()
-      AND pm.role = 'owner'
-      AND pm.status = 'active'
-    )
-  );
+  USING (has_plan_permission(id, auth.uid(), 'plan.delete'));
 
--- Activities: Based on plan membership and role
-CREATE POLICY "Plan members can read activities"
+-- =====================================================
+-- ACTIVITIES POLICIES (Updated for granular permissions)
+-- =====================================================
+
+-- Members can read activities they have permission to view
+CREATE POLICY "Members can read activities"
   ON planify_activities FOR SELECT
   USING (
-    EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_activities.plan_id
-      AND pm.profile_id = auth.uid()
-      AND pm.status = 'active'
+    has_plan_permission(plan_id, auth.uid(), 'activity.view_all')
+    OR (
+      has_plan_permission(plan_id, auth.uid(), 'activity.view_own')
+      AND created_by = auth.uid()
     )
   );
 
-CREATE POLICY "Plan editors can manage activities"
-  ON planify_activities FOR ALL
+-- Users with activity.create can insert
+CREATE POLICY "Users with activity.create can insert"
+  ON planify_activities FOR INSERT
+  WITH CHECK (has_plan_permission(plan_id, auth.uid(), 'activity.create'));
+
+-- Users can update activities based on edit_own or edit_all permission
+CREATE POLICY "Users can update activities"
+  ON planify_activities FOR UPDATE
+  USING (
+    has_plan_permission(plan_id, auth.uid(), 'activity.edit_all')
+    OR (
+      has_plan_permission(plan_id, auth.uid(), 'activity.edit_own')
+      AND created_by = auth.uid()
+    )
+  );
+
+-- Users can delete activities based on delete_own or delete_all permission
+CREATE POLICY "Users can delete activities"
+  ON planify_activities FOR DELETE
+  USING (
+    has_plan_permission(plan_id, auth.uid(), 'activity.delete_all')
+    OR (
+      has_plan_permission(plan_id, auth.uid(), 'activity.delete_own')
+      AND created_by = auth.uid()
+    )
+  );
+
+-- =====================================================
+-- PLAN MEMBERS POLICIES
+-- =====================================================
+
+-- Members can read other members of plans they belong to
+CREATE POLICY "Members can read plan members"
+  ON planify_plan_members FOR SELECT
   USING (
     EXISTS (
       SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_activities.plan_id
+      WHERE pm.plan_id = planify_plan_members.plan_id
       AND pm.profile_id = auth.uid()
-      AND pm.role IN ('owner', 'admin', 'editor')
       AND pm.status = 'active'
     )
   );
 
--- Share links: Public access via token (handled in app logic)
--- Note: Guest access bypasses RLS via service role
+-- Users with plan.manage_members can manage members
+CREATE POLICY "Permission holders can manage members"
+  ON planify_plan_members FOR ALL
+  USING (
+    has_plan_permission(plan_id, auth.uid(), 'plan.manage_members')
+    OR can_manage_plan_permissions(plan_id, auth.uid())
+  );
 
--- Staff availability: Own records or org admins
+-- =====================================================
+-- SHARE LINKS POLICIES
+-- =====================================================
+
+-- Users with plan.manage_sharing can manage share links
+CREATE POLICY "Permission holders can manage share links"
+  ON planify_share_links FOR ALL
+  USING (has_plan_permission(plan_id, auth.uid(), 'plan.manage_sharing'));
+
+-- =====================================================
+-- TEMPLATES POLICIES
+-- =====================================================
+
+-- Users with template.view can read templates
+CREATE POLICY "Users can read templates"
+  ON planify_templates FOR SELECT
+  USING (
+    is_system_template = TRUE
+    OR EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_templates.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 1
+    )
+  );
+
+-- Users with template.create can insert
+CREATE POLICY "Users can create templates"
+  ON planify_templates FOR INSERT
+  WITH CHECK (
+    EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_templates.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 1
+    )
+  );
+
+-- Users can update/delete their own or all templates based on permissions
+CREATE POLICY "Users can update templates"
+  ON planify_templates FOR UPDATE
+  USING (
+    is_system_template = FALSE AND
+    (created_by = auth.uid() OR EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_templates.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 3
+    ))
+  );
+
+CREATE POLICY "Users can delete templates"
+  ON planify_templates FOR DELETE
+  USING (
+    is_system_template = FALSE AND
+    (created_by = auth.uid() OR EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_templates.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 3
+    ))
+  );
+
+-- =====================================================
+-- STAFF AVAILABILITY POLICIES
+-- =====================================================
+
+-- Staff can manage own availability
 CREATE POLICY "Staff can manage own availability"
   ON planify_staff_availability FOR ALL
   USING (profile_id = auth.uid());
 
+-- Org staff can read team availability
 CREATE POLICY "Org staff can read team availability"
   ON planify_staff_availability FOR SELECT
   USING (
@@ -1087,6 +1998,18 @@ CREATE POLICY "Org staff can read team availability"
       WHERE org_user.org_id = planify_staff_availability.org_id
       AND org_user.profile_id = auth.uid()
       AND org_user.role_id >= 1
+    )
+  );
+
+-- Managers can edit team availability
+CREATE POLICY "Managers can edit team availability"
+  ON planify_staff_availability FOR UPDATE
+  USING (
+    EXISTS (
+      SELECT 1 FROM org_user
+      WHERE org_user.org_id = planify_staff_availability.org_id
+      AND org_user.profile_id = auth.uid()
+      AND org_user.role_id >= 3
     )
   );
 
@@ -1112,25 +2035,125 @@ INSERT INTO planify_categories (name, color, is_default, sort_order) VALUES
   ('Event', '#EC4899', TRUE, 6);
 
 -- =====================================================
--- FUNCTIONS
+-- SEED SYSTEM DEFAULT PERMISSION SETS
 -- =====================================================
 
--- Function to check plan permission
-CREATE OR REPLACE FUNCTION check_plan_permission(
-  p_plan_id UUID,
-  p_profile_id UUID,
-  p_required_roles planify_role[]
-) RETURNS BOOLEAN AS $$
-BEGIN
-  RETURN EXISTS (
-    SELECT 1 FROM planify_plan_members
-    WHERE plan_id = p_plan_id
-    AND profile_id = p_profile_id
-    AND role = ANY(p_required_roles)
-    AND status = 'active'
-  );
-END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+-- Full Access: Complete control over the plan
+INSERT INTO planify_permission_sets (
+  name, name_sv, description, is_system, is_guest, permissions, restrictions
+) VALUES (
+  'Full Access',
+  'Full åtkomst',
+  'Complete control over the plan (except ownership transfer)',
+  TRUE,
+  FALSE,
+  ARRAY[
+    'activity.create', 'activity.view_own', 'activity.view_all',
+    'activity.edit_own', 'activity.edit_all', 'activity.delete_own',
+    'activity.delete_all', 'activity.publish', 'activity.unpublish',
+    'activity.duplicate',
+    'plan.view', 'plan.edit', 'plan.manage_members',
+    'plan.manage_sharing', 'plan.manage_permissions',
+    'template.view', 'template.create', 'template.edit_own',
+    'template.edit_all', 'template.delete_own', 'template.delete_all',
+    'template.use',
+    'schedule.view_own', 'schedule.view_team', 'schedule.edit_own',
+    'schedule.edit_team', 'schedule.request_timeoff', 'schedule.approve_timeoff',
+    'assignment.view', 'assignment.assign_self', 'assignment.assign_others',
+    'assignment.remove_self', 'assignment.remove_others',
+    'sync.view_status', 'sync.trigger', 'sync.resolve_conflicts'
+  ],
+  '{}'::JSONB
+);
+
+-- Manager: Can manage activities and members, publish to Noisify
+INSERT INTO planify_permission_sets (
+  name, name_sv, description, is_system, is_guest, permissions, restrictions
+) VALUES (
+  'Manager',
+  'Ansvarig',
+  'Can manage activities and members, publish to Noisify',
+  TRUE,
+  FALSE,
+  ARRAY[
+    'activity.create', 'activity.view_all', 'activity.edit_all',
+    'activity.delete_all', 'activity.publish', 'activity.unpublish',
+    'activity.duplicate',
+    'plan.view', 'plan.edit', 'plan.manage_members', 'plan.manage_sharing',
+    'template.view', 'template.create', 'template.edit_own',
+    'template.edit_all', 'template.delete_own', 'template.delete_all',
+    'template.use',
+    'schedule.view_own', 'schedule.view_team', 'schedule.edit_own',
+    'schedule.approve_timeoff',
+    'assignment.view', 'assignment.assign_self', 'assignment.assign_others',
+    'assignment.remove_self', 'assignment.remove_others',
+    'sync.view_status', 'sync.trigger', 'sync.resolve_conflicts'
+  ],
+  '{}'::JSONB
+);
+
+-- Contributor: Can create and edit own activities, view all
+INSERT INTO planify_permission_sets (
+  name, name_sv, description, is_system, is_guest, permissions, restrictions
+) VALUES (
+  'Contributor',
+  'Bidragsgivare',
+  'Can create and edit own activities, view all',
+  TRUE,
+  FALSE,
+  ARRAY[
+    'activity.create', 'activity.view_all', 'activity.edit_own',
+    'activity.delete_own', 'activity.duplicate',
+    'plan.view',
+    'template.view', 'template.create', 'template.edit_own',
+    'template.delete_own', 'template.use',
+    'schedule.view_own', 'schedule.view_team', 'schedule.edit_own',
+    'schedule.request_timeoff',
+    'assignment.view', 'assignment.assign_self', 'assignment.remove_self',
+    'sync.view_status'
+  ],
+  '{}'::JSONB
+);
+
+-- Viewer: Read-only access to plan and activities
+INSERT INTO planify_permission_sets (
+  name, name_sv, description, is_system, is_guest, permissions, restrictions
+) VALUES (
+  'Viewer',
+  'Visare',
+  'Read-only access to plan and activities',
+  TRUE,
+  FALSE,
+  ARRAY[
+    'activity.view_all',
+    'plan.view',
+    'template.view',
+    'schedule.view_own',
+    'assignment.view',
+    'sync.view_status'
+  ],
+  '{}'::JSONB
+);
+
+-- Guest: Limited view access for external users (no sensitive data)
+INSERT INTO planify_permission_sets (
+  name, name_sv, description, is_system, is_guest, permissions, restrictions
+) VALUES (
+  'Guest',
+  'Gäst',
+  'Limited view access for external users (no sensitive data)',
+  TRUE,
+  TRUE,
+  ARRAY[
+    'activity.view_all',
+    'plan.view'
+  ],
+  '{"hide_contact_info": true, "hide_internal_notes": true, "hide_assignments": true, "limited_ui": true}'::JSONB
+);
+
+-- =====================================================
+-- ADDITIONAL HELPER FUNCTIONS
+-- =====================================================
 
 -- Function to get staff availability for date range
 CREATE OR REPLACE FUNCTION get_staff_availability(
@@ -1165,6 +2188,29 @@ BEGIN
     AND sa.status = 'approved';
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Function to get user's effective permissions for a plan
+CREATE OR REPLACE FUNCTION get_user_plan_permissions(
+  p_plan_id UUID,
+  p_user_id UUID
+) RETURNS TABLE (
+  permission TEXT,
+  is_owner BOOLEAN,
+  restrictions JSONB
+) AS $$
+BEGIN
+  RETURN QUERY
+  SELECT
+    unnest(ps.permissions) AS permission,
+    pm.is_owner,
+    ps.restrictions
+  FROM planify_plan_members pm
+  JOIN planify_permission_sets ps ON ps.id = pm.permission_set_id
+  WHERE pm.plan_id = p_plan_id
+  AND pm.profile_id = p_user_id
+  AND pm.status = 'active';
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 ```
 
 ### 10.2 File Structure (Updated)
@@ -1178,7 +2224,13 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 │   ├── page.tsx                      # Plan detail (calendar default)
 │   ├── actions.ts                    # Server actions for activities
 │   ├── settings/
-│   │   └── page.tsx                  # Plan settings (sharing, members)
+│   │   ├── page.tsx                  # Plan settings (general)
+│   │   ├── members/
+│   │   │   └── page.tsx              # Members management
+│   │   ├── permissions/
+│   │   │   └── page.tsx              # Permission sets management
+│   │   └── sharing/
+│   │       └── page.tsx              # Share links management
 │   └── loading.tsx                   # Loading state
 ├── view/
 │   └── [token]/
@@ -1208,6 +2260,10 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ├── presence-avatars.tsx              # Active users display
 ├── share-dialog.tsx                  # Share link management
 ├── member-list.tsx                   # Plan members management
+├── member-invite-dialog.tsx          # Invite member dialog
+├── permission-set-list.tsx           # Permission sets listing
+├── permission-set-form.tsx           # Create/edit permission set
+├── permission-picker.tsx             # Permission checkboxes UI
 ├── template-picker.tsx               # Template selection dialog
 ├── template-form.tsx                 # Create/edit template
 ├── staff-assignment.tsx              # Staff assignment UI
@@ -1223,6 +2279,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 ├── categories.ts                     # Category management
 ├── publish.ts                        # Publish/sync to Noisify
 ├── members.ts                        # Plan membership management
+├── permissions.ts                    # Permission set management
 ├── sharing.ts                        # Share link management
 ├── templates.ts                      # Template CRUD actions
 ├── availability.ts                   # Staff availability actions
@@ -1232,6 +2289,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 /lib/planify/
 ├── realtime.ts                       # Supabase Realtime setup
 ├── permissions.ts                    # Permission checking utilities
+├── permission-constants.ts           # All permission keys as constants
 ├── sync-engine.ts                    # Sync logic between Planify/Noisify
 └── availability-utils.ts             # Availability calculation helpers
 ```
@@ -1246,10 +2304,20 @@ export async function createPlan(data: CreatePlanInput): Promise<Plan>
 export async function updatePlan(planId: string, data: UpdatePlanInput): Promise<Plan>
 export async function deletePlan(planId: string): Promise<void>
 
+// /actions/planify/permissions.ts
+export async function getPermissionSets(planId: string): Promise<PermissionSet[]>
+export async function getSystemPermissionSets(): Promise<PermissionSet[]>
+export async function createPermissionSet(planId: string, data: CreatePermissionSetInput): Promise<PermissionSet>
+export async function updatePermissionSet(setId: string, data: UpdatePermissionSetInput): Promise<PermissionSet>
+export async function deletePermissionSet(setId: string): Promise<void>
+export async function getUserPermissions(planId: string, userId: string): Promise<UserPermissions>
+export async function checkPermission(planId: string, permission: string): Promise<boolean>
+export async function canManagePermissions(planId: string): Promise<boolean>
+
 // /actions/planify/members.ts
 export async function getPlanMembers(planId: string): Promise<PlanMember[]>
-export async function inviteMember(planId: string, email: string, role: PlanifyRole): Promise<void>
-export async function updateMemberRole(memberId: string, role: PlanifyRole): Promise<void>
+export async function inviteMember(planId: string, data: InviteMemberInput): Promise<void>
+export async function updateMemberPermissions(memberId: string, permissionSetId: string): Promise<void>
 export async function removeMember(memberId: string): Promise<void>
 export async function acceptInvitation(planId: string): Promise<void>
 
