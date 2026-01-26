@@ -1,25 +1,26 @@
 -- =====================================================
 -- PLANIFY FOUNDATION - Phase 1
 -- Plans, Permission Sets, Plan Members, Categories
+-- Using p_ prefix for all Planify tables
 -- =====================================================
 
 -- =====================================================
 -- ENUMS
 -- =====================================================
 
-CREATE TYPE planify_member_status AS ENUM ('pending', 'active', 'revoked');
-CREATE TYPE planify_membership_type AS ENUM ('internal', 'external');
+CREATE TYPE p_member_status AS ENUM ('pending', 'active', 'revoked');
+CREATE TYPE p_membership_type AS ENUM ('internal', 'external');
 
 -- =====================================================
 -- PERMISSION SETS TABLE
 -- =====================================================
 
-CREATE TABLE planify_permission_sets (
+CREATE TABLE p_permission_sets (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
 
   -- Scope: NULL = system default, org_id = org-wide, plan_id = plan-specific
   org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
-  plan_id UUID, -- References planify_plans, added after plans table created
+  plan_id UUID, -- References p_plans, added after plans table created
 
   -- Metadata
   name TEXT NOT NULL,
@@ -44,7 +45,7 @@ CREATE TABLE planify_permission_sets (
 -- PLANS TABLE
 -- =====================================================
 
-CREATE TABLE planify_plans (
+CREATE TABLE p_plans (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -60,27 +61,27 @@ CREATE TABLE planify_plans (
 );
 
 -- Add foreign key for permission_sets.plan_id now that plans table exists
-ALTER TABLE planify_permission_sets
-ADD CONSTRAINT fk_permission_sets_plan
-FOREIGN KEY (plan_id) REFERENCES planify_plans(id) ON DELETE CASCADE;
+ALTER TABLE p_permission_sets
+ADD CONSTRAINT fk_p_permission_sets_plan
+FOREIGN KEY (plan_id) REFERENCES p_plans(id) ON DELETE CASCADE;
 
 -- =====================================================
 -- PLAN MEMBERS TABLE
 -- =====================================================
 
-CREATE TABLE planify_plan_members (
+CREATE TABLE p_plan_members (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  plan_id UUID NOT NULL REFERENCES planify_plans(id) ON DELETE CASCADE,
+  plan_id UUID NOT NULL REFERENCES p_plans(id) ON DELETE CASCADE,
 
   -- User identification
   profile_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
   email TEXT NOT NULL,
 
   -- Permission set reference
-  permission_set_id UUID NOT NULL REFERENCES planify_permission_sets(id),
+  permission_set_id UUID NOT NULL REFERENCES p_permission_sets(id),
 
   -- Membership type
-  membership_type planify_membership_type NOT NULL DEFAULT 'internal',
+  membership_type p_membership_type NOT NULL DEFAULT 'internal',
 
   -- Special flags
   is_owner BOOLEAN DEFAULT FALSE,
@@ -89,7 +90,7 @@ CREATE TABLE planify_plan_members (
   invited_by UUID REFERENCES profiles(id),
   invited_at TIMESTAMPTZ DEFAULT NOW(),
   accepted_at TIMESTAMPTZ,
-  status planify_member_status DEFAULT 'pending',
+  status p_member_status DEFAULT 'pending',
 
   -- Constraints
   UNIQUE(plan_id, profile_id),
@@ -100,7 +101,7 @@ CREATE TABLE planify_plan_members (
 -- CATEGORIES TABLE
 -- =====================================================
 
-CREATE TABLE planify_categories (
+CREATE TABLE p_categories (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   org_id UUID REFERENCES organizations(id) ON DELETE CASCADE,
   name TEXT NOT NULL,
@@ -114,24 +115,24 @@ CREATE TABLE planify_categories (
 -- INDEXES
 -- =====================================================
 
-CREATE INDEX idx_planify_plans_org ON planify_plans(org_id);
-CREATE INDEX idx_planify_plans_created_by ON planify_plans(created_by);
-CREATE INDEX idx_planify_permission_sets_org ON planify_permission_sets(org_id);
-CREATE INDEX idx_planify_permission_sets_plan ON planify_permission_sets(plan_id);
-CREATE INDEX idx_planify_permission_sets_system ON planify_permission_sets(is_system) WHERE is_system = TRUE;
-CREATE INDEX idx_planify_plan_members_plan ON planify_plan_members(plan_id);
-CREATE INDEX idx_planify_plan_members_profile ON planify_plan_members(profile_id);
-CREATE INDEX idx_planify_plan_members_permission_set ON planify_plan_members(permission_set_id);
-CREATE INDEX idx_planify_categories_org ON planify_categories(org_id);
+CREATE INDEX idx_p_plans_org ON p_plans(org_id);
+CREATE INDEX idx_p_plans_created_by ON p_plans(created_by);
+CREATE INDEX idx_p_permission_sets_org ON p_permission_sets(org_id);
+CREATE INDEX idx_p_permission_sets_plan ON p_permission_sets(plan_id);
+CREATE INDEX idx_p_permission_sets_system ON p_permission_sets(is_system) WHERE is_system = TRUE;
+CREATE INDEX idx_p_plan_members_plan ON p_plan_members(plan_id);
+CREATE INDEX idx_p_plan_members_profile ON p_plan_members(profile_id);
+CREATE INDEX idx_p_plan_members_permission_set ON p_plan_members(permission_set_id);
+CREATE INDEX idx_p_categories_org ON p_categories(org_id);
 
 -- =====================================================
 -- ROW LEVEL SECURITY
 -- =====================================================
 
-ALTER TABLE planify_plans ENABLE ROW LEVEL SECURITY;
-ALTER TABLE planify_permission_sets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE planify_plan_members ENABLE ROW LEVEL SECURITY;
-ALTER TABLE planify_categories ENABLE ROW LEVEL SECURITY;
+ALTER TABLE p_plans ENABLE ROW LEVEL SECURITY;
+ALTER TABLE p_permission_sets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE p_plan_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE p_categories ENABLE ROW LEVEL SECURITY;
 
 -- =====================================================
 -- PERMISSION CHECKING FUNCTIONS
@@ -150,8 +151,8 @@ BEGIN
   -- Get member's permission set and owner status
   SELECT ps.permissions, pm.is_owner
   INTO v_permissions, v_is_owner
-  FROM planify_plan_members pm
-  JOIN planify_permission_sets ps ON ps.id = pm.permission_set_id
+  FROM p_plan_members pm
+  JOIN p_permission_sets ps ON ps.id = pm.permission_set_id
   WHERE pm.plan_id = p_plan_id
   AND pm.profile_id = p_user_id
   AND pm.status = 'active';
@@ -197,7 +198,7 @@ DECLARE
 BEGIN
   -- Check if plan owner
   SELECT pm.is_owner INTO v_is_owner
-  FROM planify_plan_members pm
+  FROM p_plan_members pm
   WHERE pm.plan_id = p_plan_id
   AND pm.profile_id = p_user_id
   AND pm.status = 'active';
@@ -208,7 +209,7 @@ BEGIN
 
   -- Check if org admin (role_id >= 3)
   SELECT p.org_id INTO v_org_id
-  FROM planify_plans p
+  FROM p_plans p
   WHERE p.id = p_plan_id;
 
   SELECT ou.role_id INTO v_org_role_id
@@ -231,19 +232,19 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 
 -- Everyone can read system permission sets
 CREATE POLICY "Anyone can read system permission sets"
-  ON planify_permission_sets FOR SELECT
+  ON p_permission_sets FOR SELECT
   TO authenticated
   USING (is_system = TRUE);
 
 -- Plan members can read permission sets for their plans
 CREATE POLICY "Plan members can read plan permission sets"
-  ON planify_permission_sets FOR SELECT
+  ON p_permission_sets FOR SELECT
   TO authenticated
   USING (
     plan_id IS NOT NULL AND
     EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_permission_sets.plan_id
+      SELECT 1 FROM p_plan_members pm
+      WHERE pm.plan_id = p_permission_sets.plan_id
       AND pm.profile_id = auth.uid()
       AND pm.status = 'active'
     )
@@ -251,13 +252,13 @@ CREATE POLICY "Plan members can read plan permission sets"
 
 -- Org staff can read org-level permission sets
 CREATE POLICY "Org staff can read org permission sets"
-  ON planify_permission_sets FOR SELECT
+  ON p_permission_sets FOR SELECT
   TO authenticated
   USING (
     org_id IS NOT NULL AND plan_id IS NULL AND
     EXISTS (
       SELECT 1 FROM org_user
-      WHERE org_user.org_id = planify_permission_sets.org_id
+      WHERE org_user.org_id = p_permission_sets.org_id
       AND org_user.profile_id = auth.uid()
       AND org_user.role_id >= 1
     )
@@ -265,7 +266,7 @@ CREATE POLICY "Org staff can read org permission sets"
 
 -- Permission managers can create custom permission sets
 CREATE POLICY "Permission managers can insert custom sets"
-  ON planify_permission_sets FOR INSERT
+  ON p_permission_sets FOR INSERT
   TO authenticated
   WITH CHECK (
     is_system = FALSE AND
@@ -274,7 +275,7 @@ CREATE POLICY "Permission managers can insert custom sets"
       OR
       (org_id IS NOT NULL AND plan_id IS NULL AND EXISTS (
         SELECT 1 FROM org_user
-        WHERE org_user.org_id = planify_permission_sets.org_id
+        WHERE org_user.org_id = p_permission_sets.org_id
         AND org_user.profile_id = auth.uid()
         AND org_user.role_id >= 3
       ))
@@ -283,7 +284,7 @@ CREATE POLICY "Permission managers can insert custom sets"
 
 -- Permission managers can update custom permission sets
 CREATE POLICY "Permission managers can update custom sets"
-  ON planify_permission_sets FOR UPDATE
+  ON p_permission_sets FOR UPDATE
   TO authenticated
   USING (
     is_system = FALSE AND
@@ -292,7 +293,7 @@ CREATE POLICY "Permission managers can update custom sets"
       OR
       (org_id IS NOT NULL AND plan_id IS NULL AND EXISTS (
         SELECT 1 FROM org_user
-        WHERE org_user.org_id = planify_permission_sets.org_id
+        WHERE org_user.org_id = p_permission_sets.org_id
         AND org_user.profile_id = auth.uid()
         AND org_user.role_id >= 3
       ))
@@ -301,7 +302,7 @@ CREATE POLICY "Permission managers can update custom sets"
 
 -- Permission managers can delete custom permission sets
 CREATE POLICY "Permission managers can delete custom sets"
-  ON planify_permission_sets FOR DELETE
+  ON p_permission_sets FOR DELETE
   TO authenticated
   USING (
     is_system = FALSE AND
@@ -310,7 +311,7 @@ CREATE POLICY "Permission managers can delete custom sets"
       OR
       (org_id IS NOT NULL AND plan_id IS NULL AND EXISTS (
         SELECT 1 FROM org_user
-        WHERE org_user.org_id = planify_permission_sets.org_id
+        WHERE org_user.org_id = p_permission_sets.org_id
         AND org_user.profile_id = auth.uid()
         AND org_user.role_id >= 3
       ))
@@ -323,12 +324,12 @@ CREATE POLICY "Permission managers can delete custom sets"
 
 -- Plan members can read plans
 CREATE POLICY "Plan members can read plans"
-  ON planify_plans FOR SELECT
+  ON p_plans FOR SELECT
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_plans.id
+      SELECT 1 FROM p_plan_members pm
+      WHERE pm.plan_id = p_plans.id
       AND pm.profile_id = auth.uid()
       AND pm.status = 'active'
     )
@@ -336,12 +337,12 @@ CREATE POLICY "Plan members can read plans"
 
 -- Staff can create plans in their org
 CREATE POLICY "Staff can create plans"
-  ON planify_plans FOR INSERT
+  ON p_plans FOR INSERT
   TO authenticated
   WITH CHECK (
     EXISTS (
       SELECT 1 FROM org_user
-      WHERE org_user.org_id = planify_plans.org_id
+      WHERE org_user.org_id = p_plans.org_id
       AND org_user.profile_id = auth.uid()
       AND org_user.role_id >= 1
     )
@@ -349,13 +350,13 @@ CREATE POLICY "Staff can create plans"
 
 -- Users with plan.edit permission can update plans
 CREATE POLICY "Users with plan.edit can update plans"
-  ON planify_plans FOR UPDATE
+  ON p_plans FOR UPDATE
   TO authenticated
   USING (has_plan_permission(id, auth.uid(), 'plan.edit'));
 
 -- Users with plan.delete permission can delete plans
 CREATE POLICY "Users with plan.delete can delete plans"
-  ON planify_plans FOR DELETE
+  ON p_plans FOR DELETE
   TO authenticated
   USING (has_plan_permission(id, auth.uid(), 'plan.delete'));
 
@@ -365,12 +366,12 @@ CREATE POLICY "Users with plan.delete can delete plans"
 
 -- Members can read other members of plans they belong to
 CREATE POLICY "Members can read plan members"
-  ON planify_plan_members FOR SELECT
+  ON p_plan_members FOR SELECT
   TO authenticated
   USING (
     EXISTS (
-      SELECT 1 FROM planify_plan_members pm
-      WHERE pm.plan_id = planify_plan_members.plan_id
+      SELECT 1 FROM p_plan_members pm
+      WHERE pm.plan_id = p_plan_members.plan_id
       AND pm.profile_id = auth.uid()
       AND pm.status = 'active'
     )
@@ -378,7 +379,7 @@ CREATE POLICY "Members can read plan members"
 
 -- Users with plan.manage_members can insert members
 CREATE POLICY "Permission holders can insert members"
-  ON planify_plan_members FOR INSERT
+  ON p_plan_members FOR INSERT
   TO authenticated
   WITH CHECK (
     has_plan_permission(plan_id, auth.uid(), 'plan.manage_members')
@@ -387,7 +388,7 @@ CREATE POLICY "Permission holders can insert members"
 
 -- Users with plan.manage_members can update members
 CREATE POLICY "Permission holders can update members"
-  ON planify_plan_members FOR UPDATE
+  ON p_plan_members FOR UPDATE
   TO authenticated
   USING (
     has_plan_permission(plan_id, auth.uid(), 'plan.manage_members')
@@ -396,7 +397,7 @@ CREATE POLICY "Permission holders can update members"
 
 -- Users with plan.manage_members can delete members (except owner)
 CREATE POLICY "Permission holders can delete members"
-  ON planify_plan_members FOR DELETE
+  ON p_plan_members FOR DELETE
   TO authenticated
   USING (
     is_owner = FALSE AND (
@@ -411,19 +412,19 @@ CREATE POLICY "Permission holders can delete members"
 
 -- Everyone can read default categories
 CREATE POLICY "Anyone can read default categories"
-  ON planify_categories FOR SELECT
+  ON p_categories FOR SELECT
   TO authenticated
   USING (is_default = TRUE);
 
 -- Org staff can read their org's categories
 CREATE POLICY "Org staff can read org categories"
-  ON planify_categories FOR SELECT
+  ON p_categories FOR SELECT
   TO authenticated
   USING (
     org_id IS NOT NULL AND
     EXISTS (
       SELECT 1 FROM org_user
-      WHERE org_user.org_id = planify_categories.org_id
+      WHERE org_user.org_id = p_categories.org_id
       AND org_user.profile_id = auth.uid()
       AND org_user.role_id >= 1
     )
@@ -431,13 +432,13 @@ CREATE POLICY "Org staff can read org categories"
 
 -- Org admins can manage categories
 CREATE POLICY "Org admins can manage categories"
-  ON planify_categories FOR ALL
+  ON p_categories FOR ALL
   TO authenticated
   USING (
     is_default = FALSE AND
     EXISTS (
       SELECT 1 FROM org_user
-      WHERE org_user.org_id = planify_categories.org_id
+      WHERE org_user.org_id = p_categories.org_id
       AND org_user.profile_id = auth.uid()
       AND org_user.role_id >= 3
     )
@@ -448,7 +449,7 @@ CREATE POLICY "Org admins can manage categories"
 -- =====================================================
 
 -- Full Access
-INSERT INTO planify_permission_sets (
+INSERT INTO p_permission_sets (
   name, name_sv, description, is_system, is_guest, permissions, restrictions
 ) VALUES (
   'Full Access',
@@ -476,7 +477,7 @@ INSERT INTO planify_permission_sets (
 );
 
 -- Manager
-INSERT INTO planify_permission_sets (
+INSERT INTO p_permission_sets (
   name, name_sv, description, is_system, is_guest, permissions, restrictions
 ) VALUES (
   'Manager',
@@ -502,7 +503,7 @@ INSERT INTO planify_permission_sets (
 );
 
 -- Contributor
-INSERT INTO planify_permission_sets (
+INSERT INTO p_permission_sets (
   name, name_sv, description, is_system, is_guest, permissions, restrictions
 ) VALUES (
   'Contributor',
@@ -525,7 +526,7 @@ INSERT INTO planify_permission_sets (
 );
 
 -- Viewer
-INSERT INTO planify_permission_sets (
+INSERT INTO p_permission_sets (
   name, name_sv, description, is_system, is_guest, permissions, restrictions
 ) VALUES (
   'Viewer',
@@ -545,7 +546,7 @@ INSERT INTO planify_permission_sets (
 );
 
 -- Guest
-INSERT INTO planify_permission_sets (
+INSERT INTO p_permission_sets (
   name, name_sv, description, is_system, is_guest, permissions, restrictions
 ) VALUES (
   'Guest',
@@ -564,7 +565,7 @@ INSERT INTO planify_permission_sets (
 -- SEED DEFAULT CATEGORIES
 -- =====================================================
 
-INSERT INTO planify_categories (name, color, is_default, sort_order) VALUES
+INSERT INTO p_categories (name, color, is_default, sort_order) VALUES
   ('Dans', '#F59E0B', TRUE, 1),
   ('Mat', '#F97316', TRUE, 2),
   ('Öppen Fritidsgård', '#10B981', TRUE, 3),
@@ -592,8 +593,8 @@ BEGIN
     pm.is_owner,
     ps.restrictions,
     ps.name
-  FROM planify_plan_members pm
-  JOIN planify_permission_sets ps ON ps.id = pm.permission_set_id
+  FROM p_plan_members pm
+  JOIN p_permission_sets ps ON ps.id = pm.permission_set_id
   WHERE pm.plan_id = p_plan_id
   AND pm.profile_id = p_user_id
   AND pm.status = 'active';
@@ -604,7 +605,7 @@ $$ LANGUAGE plpgsql SECURITY DEFINER STABLE;
 -- TRIGGER: Auto-update updated_at timestamp
 -- =====================================================
 
-CREATE OR REPLACE FUNCTION update_planify_updated_at()
+CREATE OR REPLACE FUNCTION update_p_updated_at()
 RETURNS TRIGGER AS $$
 BEGIN
   NEW.updated_at = NOW();
@@ -612,12 +613,12 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
-CREATE TRIGGER planify_plans_updated_at
-  BEFORE UPDATE ON planify_plans
+CREATE TRIGGER p_plans_updated_at
+  BEFORE UPDATE ON p_plans
   FOR EACH ROW
-  EXECUTE FUNCTION update_planify_updated_at();
+  EXECUTE FUNCTION update_p_updated_at();
 
-CREATE TRIGGER planify_permission_sets_updated_at
-  BEFORE UPDATE ON planify_permission_sets
+CREATE TRIGGER p_permission_sets_updated_at
+  BEFORE UPDATE ON p_permission_sets
   FOR EACH ROW
-  EXECUTE FUNCTION update_planify_updated_at();
+  EXECUTE FUNCTION update_p_updated_at();

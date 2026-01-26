@@ -56,7 +56,7 @@ async function getFullAccessPermissionSetId() {
   const supabase = await createClient()
 
   const { data } = await supabase
-    .from("planify_permission_sets")
+    .from("p_permission_sets")
     .select("id")
     .eq("name", "Full Access")
     .eq("is_system", true)
@@ -81,7 +81,7 @@ export async function getPlans(): Promise<{ plans: Plan[], error: string | null 
 
   // Get plans where user is a member
   const { data: memberPlans, error: memberError } = await supabase
-    .from("planify_plan_members")
+    .from("p_plan_members")
     .select("plan_id")
     .eq("profile_id", profile.id)
     .eq("status", "active")
@@ -99,7 +99,7 @@ export async function getPlans(): Promise<{ plans: Plan[], error: string | null 
 
   // Get plan details
   const { data: plans, error: plansError } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .select("*")
     .in("id", planIds)
     .eq("org_id", orgId)
@@ -114,7 +114,7 @@ export async function getPlans(): Promise<{ plans: Plan[], error: string | null 
   const plansWithCounts = await Promise.all(
     (plans || []).map(async (plan) => {
       const { count: memberCount } = await supabase
-        .from("planify_plan_members")
+        .from("p_plan_members")
         .select("*", { count: "exact", head: true })
         .eq("plan_id", plan.id)
         .eq("status", "active")
@@ -141,7 +141,7 @@ export async function getPlan(planId: string): Promise<{ plan: Plan | null, erro
 
   // Check if user is a member of this plan
   const { data: membership } = await supabase
-    .from("planify_plan_members")
+    .from("p_plan_members")
     .select("*")
     .eq("plan_id", planId)
     .eq("profile_id", profile.id)
@@ -153,7 +153,7 @@ export async function getPlan(planId: string): Promise<{ plan: Plan | null, erro
   }
 
   const { data: plan, error } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .select("*")
     .eq("id", planId)
     .single()
@@ -206,7 +206,7 @@ export async function createPlan(input: CreatePlanInput): Promise<{ plan: Plan |
 
   // Create the plan
   const { data: plan, error: planError } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .insert({
       org_id: orgId,
       name: input.name,
@@ -225,7 +225,7 @@ export async function createPlan(input: CreatePlanInput): Promise<{ plan: Plan |
 
   // Add the creator as owner with Full Access
   const { error: memberError } = await supabase
-    .from("planify_plan_members")
+    .from("p_plan_members")
     .insert({
       plan_id: plan.id,
       profile_id: profile.id,
@@ -241,7 +241,7 @@ export async function createPlan(input: CreatePlanInput): Promise<{ plan: Plan |
   if (memberError) {
     console.error("Error adding owner membership:", memberError)
     // Delete the plan if we couldn't add the owner
-    await supabase.from("planify_plans").delete().eq("id", plan.id)
+    await supabase.from("p_plans").delete().eq("id", plan.id)
     return { plan: null, error: "Could not set up plan ownership" }
   }
 
@@ -263,7 +263,7 @@ export async function updatePlan(
 
   // Check permission via RLS (will fail if user doesn't have plan.edit)
   const { error } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .update({
       ...input,
       updated_at: new Date().toISOString()
@@ -294,7 +294,7 @@ export async function deletePlan(planId: string): Promise<{ success: boolean, er
 
   // Check if user is the owner
   const { data: membership } = await supabase
-    .from("planify_plan_members")
+    .from("p_plan_members")
     .select("is_owner")
     .eq("plan_id", planId)
     .eq("profile_id", profile.id)
@@ -306,7 +306,7 @@ export async function deletePlan(planId: string): Promise<{ success: boolean, er
   }
 
   const { error } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .delete()
     .eq("id", planId)
 
@@ -364,7 +364,7 @@ export async function uploadPlanCover(
 
   // Update the plan with the new cover URL
   const { error: updateError } = await supabase
-    .from("planify_plans")
+    .from("p_plans")
     .update({ cover_image_url: publicUrl })
     .eq("id", planId)
 
