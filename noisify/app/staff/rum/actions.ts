@@ -1,11 +1,14 @@
 'use server'
 
 import { createClient, createAdminClient } from "@/utils/supabase/server";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { getSelectedOrganization } from "../actions";
 
-async function checkOrgStatus(orgId: string, supabase: any) {
+type DbClient = SupabaseClient
+
+async function checkOrgStatus(orgId: string, supabase: DbClient) {
     const { data: org } = await supabase
         .from('organizations')
         .select('org_status')
@@ -17,7 +20,7 @@ async function checkOrgStatus(orgId: string, supabase: any) {
     }
 }
 
-async function checkStaffAccess(orgId: string, profileId: string, supabase: any) {
+async function checkStaffAccess(orgId: string, profileId: string, supabase: DbClient) {
     const { data: orgUser } = await supabase
         .from('org_user')
         .select('role_id')
@@ -28,6 +31,33 @@ async function checkStaffAccess(orgId: string, profileId: string, supabase: any)
     if (!orgUser || orgUser.role_id < 1) {
         throw new Error("Unauthorized: You do not have staff access to this organization.");
     }
+}
+
+async function getAuthenticatedProfileId(supabase: DbClient) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error("Unauthorized");
+
+    const { data: profile } = await supabase
+        .from("profiles")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+
+    if (!profile) throw new Error("Profile not found");
+    return profile.id as string;
+}
+
+async function checkRoomStaffAccess(roomId: string, profileId: string, supabase: DbClient) {
+    const { data: room } = await supabase
+        .from("rooms")
+        .select("org_id")
+        .eq("id", roomId)
+        .single();
+
+    if (!room) throw new Error("Room not found");
+
+    await checkOrgStatus(room.org_id, supabase);
+    await checkStaffAccess(room.org_id, profileId, supabase);
 }
 
 export async function createRoom(formData: FormData) {
@@ -92,19 +122,8 @@ export async function createRoom(formData: FormData) {
 
 export async function updateRoom(roomId: string, formData: FormData) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
-
-    // Check Org Status
-    const { data: existingRoom } = await supabase
-        .from("rooms")
-        .select("org_id")
-        .eq("id", roomId)
-        .single();
-
-    if (existingRoom) {
-        await checkOrgStatus(existingRoom.org_id, supabase);
-    }
+    const profileId = await getAuthenticatedProfileId(supabase);
+    await checkRoomStaffAccess(roomId, profileId, supabase);
 
     const name = formData.get("name") as string;
     const description = formData.get("description") as string;
@@ -140,6 +159,9 @@ export async function updateRoom(roomId: string, formData: FormData) {
 
 export async function deleteRoom(roomId: string) {
     const supabase = await createClient();
+    const profileId = await getAuthenticatedProfileId(supabase);
+
+    await checkRoomStaffAccess(roomId, profileId, supabase);
 
     const { error } = await supabase.from("rooms").delete().eq("id", roomId);
 
@@ -154,6 +176,9 @@ export async function deleteRoom(roomId: string) {
 
 export async function getRoomTimeSlotRules(roomId: string) {
     const supabase = await createClient();
+    const profileId = await getAuthenticatedProfileId(supabase);
+
+    await checkRoomStaffAccess(roomId, profileId, supabase);
 
     const { data, error } = await supabase
         .from("room_time_slot_rules")
@@ -172,11 +197,9 @@ export async function getRoomTimeSlotRules(roomId: string) {
 
 export async function createRoomTimeSlotRule(roomId: string, dayOfWeek: number, startTime: string, endTime: string) {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error("Unauthorized");
+    const profileId = await getAuthenticatedProfileId(supabase);
 
-    const { data: profile } = await supabase.from("profiles").select("id").eq("user_id", user.id).single();
-    if (!profile) throw new Error("Profile not found");
+    await checkRoomStaffAccess(roomId, profileId, supabase);
 
     const { data, error } = await supabase.from("room_time_slot_rules").insert({
         room_id: roomId,
@@ -184,7 +207,7 @@ export async function createRoomTimeSlotRule(roomId: string, dayOfWeek: number, 
         start_time: startTime,
         end_time: endTime,
         effective_from: new Date().toISOString().split('T')[0], // Today
-        created_by: profile.id
+        created_by: profileId
     }).select().single();
 
     if (error) {
@@ -198,6 +221,9 @@ export async function createRoomTimeSlotRule(roomId: string, dayOfWeek: number, 
 
 export async function deleteRoomTimeSlotRule(ruleId: string, roomId: string) {
     const supabase = await createClient();
+    const profileId = await getAuthenticatedProfileId(supabase);
+
+    await checkRoomStaffAccess(roomId, profileId, supabase);
 
     const { error } = await supabase.from("room_time_slot_rules").delete().eq("id", ruleId);
 
